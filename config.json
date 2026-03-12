@@ -1,0 +1,12 @@
+{
+    "target_times": [
+        "06:00"
+    ],
+    "files": {
+        "tomorrow": [],
+        "today": [],
+        "yesterday": {}
+    },
+    "last_display_date": "2026-03-12",
+    "triggered_times_today": []
+}
