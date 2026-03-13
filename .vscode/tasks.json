@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "UI Dev Server",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/ui" },
+      "group": "build",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "UI Build",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/ui" },
+      "group": "build",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "Build EXE",
+      "type": "shell",
+      "command": "python build_exe.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "dependsOn": "UI Build",
+      "presentation": { "panel": "new" }
+    }
+  ]
+}
