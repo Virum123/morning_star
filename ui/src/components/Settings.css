@@ -37,79 +37,162 @@
 .time-input-wrapper {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.4);
+  gap: 10px;
+  background: var(--input-bg);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
-  padding: 0 16px;
+  padding: 10px 16px;
   transition: all 0.2s ease;
-  width: auto;
-  min-width: 170px;
+  min-width: 210px;
 }
 
 .time-input-wrapper:focus-within {
   border-color: var(--accent-color);
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 0 3px rgba(255, 154, 158, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-.time-icon {
-  color: var(--accent-color);
-  cursor: pointer;
-  margin-right: 8px;
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.time-icon:hover {
-  transform: scale(1.1);
-}
-
-.custom-time-display {
-  flex: 1;
-  font-family: inherit;
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  padding: 12px 0;
-  text-align: left;
-  min-width: 100px;
-}
-
-.time-input-hidden {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 5;
-}
-
-/* Hide native calendar picker indicator in webkit on the hidden input just in case */
-.time-input-hidden::-webkit-calendar-picker-indicator {
-  display: none;
-  -webkit-appearance: none;
-}
-
-.btn-outline-primary {
+.time-icon-btn {
   background: transparent;
-  color: #ff9a9e;
-  border: 1px solid #ff9a9e;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 6px;
+  transition: background 0.15s ease;
 }
 
-.btn-outline-primary:hover {
-  background: rgba(255, 154, 158, 0.1);
-  transform: translateY(-2px);
+.time-icon-btn:hover .time-icon,
+.time-icon-btn.active .time-icon {
+  color: var(--accent-color);
+  filter: drop-shadow(0 0 4px var(--accent-glow));
 }
+
+.time-input-wrapper.editing {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Static display (non-edit mode) */
+.time-display-static {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+}
+
+/* Edit mode controls */
+.time-edit-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+/* Dropdown select for hour / minute / AM-PM */
+.time-dropdown {
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 4px 6px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  min-width: 46px;
+}
+
+.time-dropdown:hover,
+.time-dropdown:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* AM/PM select inherits badge colours */
+.ampm-select {
+  min-width: 52px;
+}
+
+.ampm-select.badge-am {
+  background: var(--pill-active-bg);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.ampm-select.badge-pm {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+body.theme-dark .ampm-select.badge-pm {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border-color: #60a5fa;
+}
+
+.time-sep {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0 1px;
+  padding-bottom: 4px;
+}
+
+/* Clickable AM/PM badge */
+.ampm-clickable {
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.ampm-clickable:hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* AM / PM display badge */
+.ampm-badge {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  flex-shrink: 0;
+}
+
+.ampm-badge.badge-am {
+  background: var(--pill-active-bg);
+  color: var(--accent-color);
+}
+
+.ampm-badge.badge-pm {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+}
+
+body.theme-dark .ampm-badge.badge-pm {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+}
+
 
 .theme-select {
   width: 100%;
   max-width: 250px;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--input-bg);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   color: var(--text-primary);
@@ -126,14 +209,14 @@
 
 .theme-select:focus {
   outline: none;
-  border-color: #ff9a9e;
-  box-shadow: 0 0 0 3px rgba(255, 154, 158, 0.2);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .form-actions {
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid rgba(0,0,0,0.05);
+  border-top: 1px solid var(--divider);
   display: flex;
   justify-content: flex-end;
 }

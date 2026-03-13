@@ -1,0 +1,504 @@
+.dashboard-container {
+  height: 100%;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Left Column ── */
+.dashboard-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ds-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: var(--text-muted);
+  padding-left: 2px;
+  margin-bottom: 2px;
+}
+
+/* Task summary card */
+.ds-task-card {
+  padding: 20px 22px;
+}
+
+.ds-task-card:hover {
+  transform: translateY(-2px);
+}
+
+.ds-task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ds-task-filename {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-color);
+}
+
+.ds-task-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--sidebar-active-bg);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* Inline progress bar */
+.ds-progress-bar-track {
+  height: 4px;
+  background: var(--divider);
+  border-radius: 4px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.ds-progress-bar-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Task items list */
+.ds-task-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ds-task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  padding: 4px 0;
+}
+
+.ds-task-item.checked {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.ds-check-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.ds-check-icon.done {
+  color: var(--accent-color);
+}
+
+.ds-task-item.more {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ds-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-secondary);
+}
+
+/* ── Right Column ── */
+.dashboard-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+}
+
+.ds-widget {
+  padding: 20px;
+}
+
+.ds-widget-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+/* ── Donut Chart ── */
+.donut-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.donut-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.donut-svg {
+  overflow: visible;
+}
+
+.donut-progress {
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.donut-pct {
+  font-size: 22px;
+  font-weight: 800;
+  fill: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+}
+
+.donut-sub {
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+}
+
+.donut-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Streak Widget ── */
+.streak-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.streak-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.streak-icon {
+  color: #f97316;
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.4));
+  animation: flicker 2.5s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.4)); }
+  50% { opacity: 0.85; filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.6)); }
+}
+
+.streak-count {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.streak-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.streak-dots {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.streak-dot-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+}
+
+.streak-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--divider);
+  transition: all 0.2s ease;
+}
+
+.streak-dot.active {
+  background: var(--accent-gradient);
+  background: linear-gradient(135deg, var(--accent-color), var(--card-stripe));
+  box-shadow: 0 2px 6px var(--accent-glow);
+}
+
+.streak-dot.today {
+  background: var(--accent-gradient);
+  background: linear-gradient(135deg, var(--card-stripe), var(--accent-color));
+  box-shadow: 0 0 10px var(--accent-glow);
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.streak-dot-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ── Weekly Calendar ── */
+.week-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.week-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.wc-icon {
+  color: var(--accent-color);
+}
+
+.week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.week-day.today {
+  background: var(--sidebar-active-bg);
+  outline: 1.5px solid var(--accent-color);
+}
+
+.week-day.weekend .wd-name,
+.week-day.weekend .wd-num {
+  color: var(--text-muted);
+}
+
+.wd-name {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.wd-num {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.week-day.today .wd-name,
+.week-day.today .wd-num {
+  color: var(--accent-color);
+}
+
+/* ── Stats Summary Bar ── */
+.ds-stats-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ds-stat-chip {
+  flex: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  backdrop-filter: blur(10px);
+}
+
+.ds-stat-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent-color);
+  line-height: 1;
+}
+
+.ds-stat-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+/* ── Heatmap dot levels ── */
+.streak-dot.level-0 {
+  background: var(--divider);
+}
+
+.streak-dot.level-1 {
+  background: rgba(108, 99, 255, 0.3);
+  box-shadow: none;
+}
+
+.streak-dot.level-2 {
+  background: rgba(108, 99, 255, 0.6);
+  box-shadow: 0 2px 6px var(--accent-glow);
+}
+
+.streak-dot.level-3 {
+  background: var(--accent-gradient);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+body.theme-dark .streak-dot.level-1 {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+body.theme-dark .streak-dot.level-2 {
+  background: rgba(167, 139, 250, 0.6);
+}
+
+.streak-dot.future {
+  opacity: 0.35;
+}
+
+/* ── Quote Widget ── */
+.quote-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quote-text {
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.quote-author {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  text-align: right;
+}
+
+/* ── 🔥 완료 Button ── */
+@keyframes firePulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 106, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 106, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 106, 0, 0); }
+}
+
+.ds-fire-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 106, 0, 0.4);
+  background: rgba(255, 106, 0, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ff6a00;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  animation: firePulse 2s infinite;
+  transition: all 0.2s ease;
+  margin-bottom: 20px;
+}
+
+body.theme-dark .ds-fire-btn {
+  background: rgba(255, 106, 0, 0.1);
+  color: #ffa15c;
+  border-color: rgba(255, 106, 0, 0.5);
+}
+
+.ds-fire-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 106, 0, 0.15);
+  box-shadow: 0 8px 16px rgba(255, 106, 0, 0.2);
+}
+
+.ds-fire-btn:active {
+  transform: scale(0.98);
+}
+
+.ds-fire-btn.fired {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  color: var(--text-primary);
+  animation: none;
+  cursor: default;
+  box-shadow: none;
+}
+
+.ds-fire-btn.fired:hover {
+  transform: none;
+}
+
+.fire-icon {
+  color: #ff6a00;
+}
+
+.fire-icon-done {
+  color: var(--success-color, #10b981);
+}
+
+/* ── Fire day in WeekCalendar ── */
+.week-day.fire-day {
+  background: rgba(255, 106, 0, 0.08);
+  border: 1px solid rgba(255, 106, 0, 0.3);
+}
+
+.wd-fire {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 4px rgba(255, 106, 0, 0.3));
+}

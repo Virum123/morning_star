@@ -22,3 +22,34 @@ Morning Star is a Windows background application that automatically greets you w
 
 ## 📱 Future Roadmap
 Check out `next_step.md` for a guide on how to port this project into a Mobile App (Android/PlayStore) or a Toss Mini Web-App utilizing Capacitor or React Native.
+
+## 🏗️ Building for Production (Standalone EXE)
+
+Follow these steps to package the app as a single distributable folder for users who don't have Python installed.
+
+### Step 1 — Build the React UI
+```bash
+cd ui
+npm run build
+cd ..
+```
+
+### Step 2 — Install Python dependencies
+```bash
+pip install pyinstaller plyer
+```
+
+> **Note:** `plyer` is required for Windows tray notifications. Without it, notifications are silently skipped.
+
+### Step 3 — Run the build script
+```bash
+python build_exe.py
+```
+
+### Output
+The final executable will be at:
+```
+dist/Morning Star/Morning Star.exe
+```
+Distribute the entire `dist/Morning Star/` folder to end-users.
+

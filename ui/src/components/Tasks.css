@@ -7,109 +7,195 @@
 .tasks-content-area {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   flex-grow: 1;
   overflow-y: auto;
   padding-bottom: 40px;
+  padding-right: 4px;
 }
 
+/* Card section wrapping each markdown file */
 .markdown-section {
-  padding: 32px 40px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 .section-header {
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--sidebar-active-bg);
-  margin-bottom: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 4px;
 }
 
 .section-filename {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   color: var(--accent-color);
 }
 
+body.theme-dark .section-filename {
+  color: var(--sidebar-active-text);
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ── Markdown Body ── */
 .markdown-body {
   line-height: 1.7;
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: var(--text-primary);
 }
 
-/* Markdown Specifics adjusted for Theme */
-.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
   color: var(--text-primary);
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
+  margin-top: 1.4em;
+  margin-bottom: 0.45em;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.4px;
 }
 
-.markdown-body h1:first-child, .markdown-body h2:first-child {
+.markdown-body h1:first-child,
+.markdown-body h2:first-child {
   margin-top: 0;
 }
 
 .markdown-body ul {
   padding-left: 0;
-  margin-bottom: 1.5em;
+  margin-bottom: 0.5em;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 3px;
 }
 
 .markdown-body li {
   margin-bottom: 0;
-  background: rgba(255, 255, 255, 0.4);
-  padding: 16px 20px;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.04) 0%, rgba(59, 130, 246, 0.02) 100%);
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(108, 99, 255, 0.08);
   display: flex;
   align-items: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 1.05rem;
+  transition: all 0.15s ease;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.markdown-body li:hover {
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.07) 0%, rgba(59, 130, 246, 0.04) 100%);
+  border-color: rgba(108, 99, 255, 0.18);
+  transform: translateX(2px);
 }
 
 body.theme-dark .markdown-body li {
-  background: rgba(20, 20, 25, 0.5);
-  border: 1px solid rgba(255, 138, 102, 0.1);
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.1);
 }
 
 body.theme-dark .markdown-body li:hover {
-  background: rgba(35, 30, 40, 0.7);
-  border-color: rgba(255, 138, 102, 0.4);
-  box-shadow: 0 6px 20px rgba(255, 138, 102, 0.1);
-  transform: translateY(-2px);
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.25);
+  box-shadow: 0 4px 16px rgba(167, 139, 250, 0.08);
+  transform: translateX(2px);
 }
 
+/* Checked items (ReactMarkdown fallback) */
 .markdown-body li:has(input[type="checkbox"]:checked) {
-  opacity: 0.4;
+  opacity: 0.35;
   text-decoration: line-through;
-  filter: grayscale(80%);
+  filter: grayscale(70%);
   background: transparent;
   border-color: transparent;
   box-shadow: none;
   transform: none;
 }
 
+/* Custom checkboxes */
 .markdown-body input[type="checkbox"] {
-  margin-right: 12px;
+  margin-right: 8px;
   accent-color: var(--accent-color);
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   cursor: pointer;
-  border-radius: 4px;
-  position: relative;
-  top: 2px;
+  flex-shrink: 0;
 }
 
+/* ── Custom Task List (row-click enabled) ── */
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(108, 99, 255, 0.08);
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.04) 0%, rgba(59, 130, 246, 0.02) 100%);
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.task-row:hover {
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.09) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-color: rgba(108, 99, 255, 0.2);
+  transform: translateX(2px);
+}
+
+body.theme-dark .task-row {
+  background: rgba(167, 139, 250, 0.05);
+  border-color: rgba(167, 139, 250, 0.1);
+}
+
+body.theme-dark .task-row:hover {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.25);
+}
+
+.task-row input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--accent-color);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+  pointer-events: none; /* row handles click; checkbox is visual only */
+}
+
+.task-checked {
+  opacity: 0.38;
+  text-decoration: line-through;
+  filter: grayscale(65%);
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.task-checked:hover {
+  opacity: 0.5;
+  transform: none !important;
+}
+
+
 .markdown-body a {
-  color: #e17055;
+  color: var(--accent-color);
   text-decoration: none;
+  font-weight: 500;
 }
 
 .markdown-body a:hover {
@@ -117,25 +203,34 @@ body.theme-dark .markdown-body li:hover {
 }
 
 .markdown-body blockquote {
-  border-left: 4px solid var(--accent-color);
-  padding-left: 16px;
+  border-left: 3px solid var(--card-stripe);
+  padding: 10px 16px;
   color: var(--text-secondary);
   font-style: italic;
   margin-left: 0;
   background: var(--sidebar-active-bg);
-  padding: 12px 16px;
   border-radius: 0 8px 8px 0;
 }
 
-.skeleton-loader {
-  color: var(--text-secondary);
-  font-style: italic;
-  animation: pulse 1.5s infinite;
-  display: inline-block;
+.markdown-body p {
+  margin-bottom: 0.75em;
+  line-height: 1.7;
 }
 
-@keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 48px 40px;
+}
+
+.empty-state h2 {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
 }

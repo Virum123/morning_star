@@ -126,6 +126,20 @@ def check_should_run(config):
             
     return None
 
+def show_notification(title, message):
+    """Show a native Windows tray notification using plyer (if installed)."""
+    try:
+        from plyer import notification
+        notification.notify(
+            title=title,
+            message=message,
+            app_name='Morning Star',
+            timeout=5
+        )
+    except Exception as e:
+        print(f"Notification failed (install plyer with: pip install plyer): {e}")
+
+
 def setup_startup():
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
@@ -396,6 +410,7 @@ def main():
                         config["triggered_times_today"] = []
                     config["triggered_times_today"].append(triggered_time)
                     save_config(config)
+                    show_notification("Morning Star", f"It's {triggered_time}, time for your morning routine!")
                     display_ui(config)
                 time.sleep(60)
             return

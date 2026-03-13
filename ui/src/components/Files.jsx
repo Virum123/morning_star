@@ -24,10 +24,6 @@ export default function Files() {
     loadFiles();
   }, []);
 
-  useEffect(() => {
-    loadFiles();
-  }, []);
-
   const loadFiles = async () => {
     setLoading(true);
     const config = await api.getConfig();
@@ -35,14 +31,15 @@ export default function Files() {
     setLoading(false);
   };
 
+  // Allow drops on both 'today' and 'tomorrow' tabs
   const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (activeTab !== 'tomorrow') return; // Only allow drop on tomorrow
+    if (activeTab !== 'tomorrow' && activeTab !== 'today') return;
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const filesArr = Array.from(e.dataTransfer.files);
-      const filesData = [];
+      const droppedFiles = [];
       
       for (const file of filesArr) {
         if (file.name.toLowerCase().endsWith('.md')) {
@@ -51,15 +48,15 @@ export default function Files() {
             reader.onload = (evt) => resolve(evt.target.result);
             reader.readAsText(file);
           });
-          filesData.push({ name: file.name, content });
+          droppedFiles.push({ name: file.name, content });
         }
       }
       
-      if (filesData.length > 0) {
-        const updatedFiles = await api.processDroppedContent('tomorrow', filesData);
+      if (droppedFiles.length > 0) {
+        const updatedFiles = await api.processDroppedContent(activeTab, droppedFiles);
         if (updatedFiles) {
           setFilesData(updatedFiles);
-          trackEvent('file_upload', { method: 'drop', count: filesData.length });
+          trackEvent('file_upload', { method: 'drop', count: droppedFiles.length, target: activeTab });
         }
       }
     }
@@ -67,7 +64,7 @@ export default function Files() {
 
   const handleDragOver = (e) => {
     e.preventDefault();
-    if (activeTab === 'tomorrow') setIsDragging(true);
+    if (activeTab === 'tomorrow' || activeTab === 'today') setIsDragging(true);
   };
 
   const handleDragLeave = (e) => {
@@ -76,11 +73,11 @@ export default function Files() {
   };
 
   const handleAddFile = async () => {
-    if (activeTab !== 'tomorrow') return;
-    const updatedFiles = await api.addFileDialog('tomorrow');
+    if (activeTab !== 'tomorrow' && activeTab !== 'today') return;
+    const updatedFiles = await api.addFileDialog(activeTab);
     if (updatedFiles) {
       setFilesData(updatedFiles);
-      trackEvent('file_upload', { method: 'dialog' });
+      trackEvent('file_upload', { method: 'dialog', target: activeTab });
     }
   };
 
@@ -94,7 +91,6 @@ export default function Files() {
   const handleWriteTaskSave = async () => {
     if (!newTaskTitle.trim() || !newTaskContent.trim()) return;
     
-    // Ensure the filename ends with .md
     let filename = newTaskTitle.trim();
     if (!filename.toLowerCase().endsWith('.md')) {
       filename += '.md';
@@ -102,13 +98,13 @@ export default function Files() {
 
     const filesDataArr = [{ name: filename, content: newTaskContent }];
     
-    const updatedFiles = await api.processDroppedContent('tomorrow', filesDataArr);
+    const updatedFiles = await api.processDroppedContent(activeTab, filesDataArr);
     if (updatedFiles) {
       setFilesData(updatedFiles);
       setIsWritingTask(false);
       setNewTaskTitle('');
       setNewTaskContent('');
-      trackEvent('task_create_inline', { title: filename });
+      trackEvent('task_create_inline', { title: filename, target: activeTab });
     }
   };
 
@@ -164,6 +160,32 @@ export default function Files() {
     );
   };
 
+  // Shared action buttons for Today / Tomorrow tabs
+  const renderActionButtons = () => (
+    <div style={{display: 'flex', gap: '10px'}}>
+      <button className="btn btn-outline-primary" onClick={() => setIsWritingTask(true)}>
+        <PenLine size={18} /> Write Task
+      </button>
+      <button className="btn btn-primary" onClick={handleAddFile}>
+        <Plus size={18} /> Add .md File
+      </button>
+    </div>
+  );
+
+  // Shared dropzone area for Today / Tomorrow tabs
+  const renderDropzone = (label, sublabel) => (
+    <div 
+      className={`dropzone-area ${isDragging ? 'dragging' : ''}`}
+      onClick={handleAddFile}
+    >
+      <FileIcon size={24} className="dropzone-icon" />
+      <div className="dropzone-text">
+        <strong>{label}</strong>
+        <span>{sublabel}</span>
+      </div>
+    </div>
+  );
+
   return (
     <div 
       className="files-container fade-in"
@@ -173,16 +195,7 @@ export default function Files() {
     >
       <div className="files-header">
         <div style={{flexGrow: 1}}></div>
-        {activeTab === 'tomorrow' && (
-          <div style={{display: 'flex', gap: '10px'}}>
-            <button className="btn btn-outline-primary" onClick={() => setIsWritingTask(true)}>
-              <PenLine size={18} /> Write Task
-            </button>
-            <button className="btn btn-primary" onClick={handleAddFile}>
-              <Plus size={18} /> Add .md File
-            </button>
-          </div>
-        )}
+        {(activeTab === 'tomorrow' || activeTab === 'today') && renderActionButtons()}
       </div>
       
       <div className="files-tabs-nav">
@@ -211,18 +224,7 @@ export default function Files() {
               <div className="tab-pane fade-in">
                 <h3 className="pane-title">Tasks for Tomorrow</h3>
                 <p className="pane-desc">Files added here will automatically move to 'Today' on the next calendar day.</p>
-                
-                <div 
-                  className={`dropzone-area ${isDragging ? 'dragging' : ''}`}
-                  onClick={handleAddFile}
-                >
-                  <FileIcon size={24} className="dropzone-icon" />
-                  <div className="dropzone-text">
-                    <strong>Drag and drop .md files here</strong>
-                    <span>Or click to add via Drop-down file picker</span>
-                  </div>
-                </div>
-
+                {renderDropzone('Drag and drop .md files here', 'Or click to add via file picker')}
                 {renderFileList(filesData.tomorrow, 'tomorrow')}
               </div>
             )}
@@ -231,7 +233,8 @@ export default function Files() {
             {activeTab === 'today' && (
               <div className="tab-pane fade-in">
                 <h3 className="pane-title">Tasks for Today</h3>
-                <p className="pane-desc">Current active tasks. Displayed on your morning screen.</p>
+                <p className="pane-desc">Current active tasks. You can also add extra files directly to today.</p>
+                {renderDropzone('Drag and drop .md files here', 'Or click to add a file directly to Today')}
                 {renderFileList(filesData.today, 'today')}
               </div>
             )}
@@ -279,13 +282,16 @@ export default function Files() {
               <X size={20} />
             </button>
             <h2 className="modal-title">Write New Task</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              Saving to: <strong style={{ color: 'var(--accent-color)' }}>{activeTab === 'today' ? 'Today' : 'Tomorrow'}</strong>
+            </p>
             
             <div className="form-group">
               <label>Task Title (Filename)</label>
               <input 
                 type="text" 
                 className="editor-input" 
-                placeholder="e.g. 1순위.md"
+                placeholder="e.g. morning_routine.md"
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 autoFocus
@@ -308,7 +314,7 @@ export default function Files() {
               onClick={handleWriteTaskSave}
               disabled={!newTaskTitle.trim() || !newTaskContent.trim()}
             >
-              <Save size={18} /> Save to Tomorrow
+              <Save size={18} /> Save to {activeTab === 'today' ? 'Today' : 'Tomorrow'}
             </button>
           </div>
         </div>

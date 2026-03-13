@@ -6,6 +6,7 @@ export const api = {
       return {
         target_times: ["06:00", "07:30"],
         theme: "light",
+        nickname: "Alex",
         files: { tomorrow: [], today: [], yesterday: {} },
         last_display_date: "2026-02-17",
         triggered_times_today: []
@@ -24,7 +25,22 @@ export const api = {
 
   readAllFiles: async () => {
     if (isDev()) {
-      return { tomorrow: [], today: [], yesterday: {} };
+      return {
+        tomorrow: [],
+        today: [
+          {
+            filename: '1순위.md',
+            path: '/mock/1순위.md',
+            content: '# 오늘의 최우선 태스크\n\n- [x] 아침 루틴 체크\n- [x] 이메일 확인\n- [ ] 디자인 리뷰 미팅 준비\n- [ ] 코드 리뷰 3건\n- [ ] PR 머지',
+          },
+          {
+            filename: '업무.md',
+            path: '/mock/업무.md',
+            content: '# 업무 목록\n\n- [x] 슬랙 메시지 답장\n- [ ] 주간 보고서 작성\n- [ ] 팀장 면담',
+          },
+        ],
+        yesterday: {},
+      };
     }
     return window.pywebview.api.read_all_files();
   },
