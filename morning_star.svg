@@ -1,0 +1,22 @@
+<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+  <!-- 흰 배경 -->
+  <rect width="256" height="256" fill="white"/>
+  
+  <!-- 검은 손잡이 (간단한 손잡이 모양) -->
+  <rect x="120" y="50" width="16" height="80" fill="black" rx="8"/>
+  
+  <!-- 사슬 (연결된 링들) -->
+  <circle cx="128" cy="140" r="6" fill="none" stroke="black" stroke-width="3"/>
+  <circle cx="128" cy="155" r="6" fill="none" stroke="black" stroke-width="3"/>
+  <circle cx="128" cy="170" r="6" fill="none" stroke="black" stroke-width="3"/>
+  <circle cx="128" cy="185" r="6" fill="none" stroke="black" stroke-width="3"/>
+  
+  <!-- 일출 (노란 해) -->
+  <circle cx="128" cy="210" r="20" fill="yellow"/>
+  <!-- 햇살 (선들) -->
+  <line x1="128" y1="180" x2="128" y2="190" stroke="yellow" stroke-width="3"/>
+  <line x1="108" y1="195" x2="118" y2="200" stroke="yellow" stroke-width="3"/>
+  <line x1="148" y1="195" x2="138" y2="200" stroke="yellow" stroke-width="3"/>
+  <line x1="108" y1="225" x2="118" y2="220" stroke="yellow" stroke-width="3"/>
+  <line x1="148" y1="225" x2="138" y2="220" stroke="yellow" stroke-width="3"/>
+</svg>
