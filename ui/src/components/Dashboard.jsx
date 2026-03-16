@@ -106,7 +106,7 @@ function StreakCalendar({ fireDays, onClose }) {
 }
 
 /* ─── Streak Widget (streak count + this week) ─── */
-function StreakWidget({ streak, fireDays = {}, onOpenCalendar }) {
+function StreakWidget({ streak, fireDays = {} }) {
   const today = new Date();
   const monday = new Date(today);
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
@@ -128,7 +128,6 @@ function StreakWidget({ streak, fireDays = {}, onOpenCalendar }) {
           <div className="streak-count">{streak}</div>
           <div className="streak-desc">day streak</div>
         </div>
-        <button className="cal-open-btn" onClick={onOpenCalendar} title="View history">+</button>
       </div>
 
       <div className="week-month-row">
@@ -395,7 +394,7 @@ export default function Dashboard() {
                 <p className="ds-widget-title">Streak</p>
                 <button className="cal-open-btn" onClick={() => setIsCalOpen(true)} title="View full history">+</button>
               </div>
-              <StreakWidget streak={streak} fireDays={fireDays} onOpenCalendar={() => setIsCalOpen(true)}/>
+              <StreakWidget streak={streak} fireDays={fireDays}/>
             </div>
 
             <div className="glass-card ds-widget">
