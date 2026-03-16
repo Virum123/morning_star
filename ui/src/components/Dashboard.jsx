@@ -52,7 +52,11 @@ function DonutChart({ percent, size = 140, strokeWidth = 14, label, sublabel }) 
       </svg>
       {label && <p className="donut-label">{label}</p>}
       {sublabel && <p className="donut-sublabel">{sublabel}</p>}
-    </d/* ─── Merged Consistency & Weekly Calendar ─── */
+    </div>
+  );
+}
+
+/* ─── Consistency + This Week (merged) ─── */
 function WeeklyConsistency({ streak, fireDays = {} }) {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0=Sun
@@ -96,11 +100,6 @@ function WeeklyConsistency({ streak, fireDays = {} }) {
         </div>
       </div>
     );
-  }
-})}
-      </div >
-    </div >
-  );
 }
 
 /* ─── Quote Widget ─── */
@@ -347,9 +346,9 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Streak & Weekly Calendar (Merged) */}
+            {/* Consistency + This Week */}
             <div className="glass-card ds-widget">
-              <p className="ds-widget-title" style={{ marginBottom: '16px' }}>Consistency</p>
+              <p className="ds-widget-title" style={{ marginBottom: '16px' }}>Consistency · This Week</p>
               <WeeklyConsistency streak={streak} fireDays={fireDays} />
             </div>
 
