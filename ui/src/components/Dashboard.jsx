@@ -124,9 +124,9 @@ function StreakWidget({ streak, fireDays = {} }) {
     <div className="streak-widget">
       <div className="streak-top">
         <Flame size={22} className="streak-icon"/>
-        <div>
-          <div className="streak-count">{streak}</div>
-          <div className="streak-desc">day streak</div>
+        <div className="streak-count-row">
+          <span className="streak-count">{streak}</span>
+          <span className="streak-desc">day</span>
         </div>
       </div>
 

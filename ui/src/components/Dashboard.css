@@ -539,10 +539,20 @@ body.theme-dark .ds-fire-btn {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .streak-top .cal-open-btn {
   margin-left: auto;
+}
+.streak-count-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.streak-count-row .streak-desc {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 /* ── No-tasks fire button ── */
