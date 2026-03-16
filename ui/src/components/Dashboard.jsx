@@ -1,105 +1,159 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Flame, CalendarDays, CheckCircle2, Circle, TrendingUp } from 'lucide-react';
+import { Flame, CheckCircle2, Circle, TrendingUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { api } from '../utils/api';
 import { trackEvent } from '../utils/analytics';
 import './Dashboard.css';
 
 /* ─── Donut Chart (SVG, no library) ─── */
-function DonutChart({ percent, size = 140, strokeWidth = 14, label, sublabel }) {
+function DonutChart({ percent, size = 140, strokeWidth = 14, label }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
-
   return (
     <div className="donut-wrapper">
       <svg width={size} height={size} className="donut-svg">
-        {/* Track */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="var(--divider)"
-          strokeWidth={strokeWidth}
-        />
-        {/* Progress */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="url(#donutGrad)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          className="donut-progress"
-        />
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="var(--divider)" strokeWidth={strokeWidth}/>
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="url(#donutGrad)"
+          strokeWidth={strokeWidth} strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          transform={`rotate(-90 ${size/2} ${size/2})`} className="donut-progress"/>
         <defs>
           <linearGradient id="donutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="var(--accent-color)" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="var(--card-stripe)" />
+            <stop offset="0%" stopColor="var(--accent-color)" stopOpacity="0.9"/>
+            <stop offset="100%" stopColor="var(--card-stripe)"/>
           </linearGradient>
         </defs>
-        {/* Center text */}
-        <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle" className="donut-pct">
-          {percent}%
-        </text>
-        <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle" className="donut-sub">
-          done
-        </text>
+        <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle" className="donut-pct">{percent}%</text>
+        <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle" className="donut-sub">done</text>
       </svg>
       {label && <p className="donut-label">{label}</p>}
-      {sublabel && <p className="donut-sublabel">{sublabel}</p>}
     </div>
   );
 }
 
-/* ─── Consistency + This Week (merged) ─── */
-function WeeklyConsistency({ streak, fireDays = {} }) {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0=Sun
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+/* ─── Streak Calendar Modal ─── */
+function StreakCalendar({ fireDays, onClose }) {
+  const now = new Date();
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
 
-    const week = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      return d;
-    });
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7; // Mon=0
+  const todayStr = now.toISOString().split('T')[0];
+  const pad = n => String(n).padStart(2, '0');
 
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const monthFireCount = Object.keys(fireDays).filter(d => {
+    const [y, m] = d.split('-').map(Number);
+    return y === viewYear && m === viewMonth + 1;
+  }).length;
+  const totalFireCount = Object.keys(fireDays).length;
 
-    return (
-      <div className="streak-widget">
-        <div className="streak-top" style={{ marginBottom: '16px' }}>
-          <Flame size={22} className="streak-icon" />
-          <div>
-            <div className="streak-count">{streak}</div>
-            <div className="streak-desc">day streak</div>
+  const prevMonth = () => viewMonth === 0
+    ? (setViewYear(y => y - 1), setViewMonth(11))
+    : setViewMonth(m => m - 1);
+  const nextMonth = () => viewMonth === 11
+    ? (setViewYear(y => y + 1), setViewMonth(0))
+    : setViewMonth(m => m + 1);
+
+  const monthLabel = new Date(viewYear, viewMonth, 1)
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const cells = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  return (
+    <div className="cal-overlay" onClick={onClose}>
+      <div className="cal-modal glass-card" onClick={e => e.stopPropagation()}>
+
+        <div className="cal-header">
+          <button className="cal-nav" onClick={prevMonth}><ChevronLeft size={16}/></button>
+          <div className="cal-title-area">
+            <span className="cal-month-label">{monthLabel}</span>
+            <span className="cal-fire-stat">
+              🔥 {monthFireCount} this month &nbsp;·&nbsp; {totalFireCount} total
+            </span>
           </div>
+          <button className="cal-nav" onClick={nextMonth}><ChevronRight size={16}/></button>
+          <button className="cal-close-btn" onClick={onClose}><X size={15}/></button>
         </div>
 
-        <div className="week-days" style={{ marginTop: '0' }}>
-          {week.map((d, i) => {
-            const isToday = d.toDateString() === today.toDateString();
-            const isWeekend = i >= 5;
-            const dateStr = d.toISOString().split('T')[0];
-            const hasFire = fireDays[dateStr];
+        <div className="cal-weekdays">
+          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+            <span key={d} className="cal-wd">{d}</span>
+          ))}
+        </div>
+
+        <div className="cal-grid">
+          {cells.map((day, i) => {
+            if (!day) return <div key={i} className="cal-cell empty"/>;
+            const dateStr = `${viewYear}-${pad(viewMonth+1)}-${pad(day)}`;
+            const isFire   = !!fireDays[dateStr];
+            const isToday  = dateStr === todayStr;
+            const isFuture = dateStr > todayStr;
             return (
-              <div key={i} className={`week-day ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''} ${hasFire ? 'fire-day' : ''}`}>
-                <span className="wd-name">{dayNames[i]}</span>
-                {hasFire
-                  ? <div className="wd-fire"><Flame size={18} color="#ff6a00" fill="#ff6a00" strokeWidth={1.5} /></div>
-                  : <span className="wd-num">{d.getDate()}</span>
-                }
+              <div key={i} className={`cal-cell${isFire?' fire':''}${isToday?' today':''}${isFuture?' future':''}`}>
+                {isFire ? '🔥' : day}
               </div>
             );
           })}
         </div>
+
       </div>
-    );
+    </div>
+  );
+}
+
+/* ─── Streak Widget (streak count + this week) ─── */
+function StreakWidget({ streak, fireDays = {}, onOpenCalendar }) {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+
+  const monthLabel = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  return (
+    <div className="streak-widget">
+      <div className="streak-top">
+        <Flame size={22} className="streak-icon"/>
+        <div>
+          <div className="streak-count">{streak}</div>
+          <div className="streak-desc">day streak</div>
+        </div>
+        <button className="cal-open-btn" onClick={onOpenCalendar} title="View history">+</button>
+      </div>
+
+      <div className="week-month-row">
+        <span className="week-month-label">{monthLabel}</span>
+      </div>
+
+      <div className="week-days">
+        {week.map((d, i) => {
+          const isToday   = d.toDateString() === today.toDateString();
+          const isWeekend = i >= 5;
+          const dateStr   = d.toISOString().split('T')[0];
+          const hasFire   = fireDays[dateStr];
+          return (
+            <div key={i} className={`week-day${isToday?' today':''}${isWeekend?' weekend':''}${hasFire?' fire-day':''}`}>
+              <span className="wd-name">{dayNames[i]}</span>
+              {hasFire
+                ? <div className="wd-fire"><Flame size={18} color="#ff6a00" fill="#ff6a00" strokeWidth={1.5}/></div>
+                : <span className="wd-num">{d.getDate()}</span>
+              }
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /* ─── Quote Widget ─── */
@@ -123,7 +177,7 @@ function QuoteWidget() {
   );
 }
 
-/* ─── Task Summary Card (left column) ─── */
+/* ─── Task Summary Card ─── */
 function TaskSummaryCard({ file, checked, total }) {
   const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
   return (
@@ -133,14 +187,14 @@ function TaskSummaryCard({ file, checked, total }) {
         <span className="ds-task-count">{checked}/{total}</span>
       </div>
       <div className="ds-progress-bar-track">
-        <div className="ds-progress-bar-fill" style={{ width: `${pct}%` }} />
+        <div className="ds-progress-bar-fill" style={{ width: `${pct}%` }}/>
       </div>
       <ul className="ds-task-items">
         {file.items?.slice(0, 5).map((item, i) => (
           <li key={i} className={`ds-task-item ${item.checked ? 'checked' : ''}`}>
             {item.checked
-              ? <CheckCircle2 size={14} className="ds-check-icon done" />
-              : <Circle size={14} className="ds-check-icon" />}
+              ? <CheckCircle2 size={14} className="ds-check-icon done"/>
+              : <Circle size={14} className="ds-check-icon"/>}
             <span>{item.text}</span>
           </li>
         ))}
@@ -154,13 +208,11 @@ function TaskSummaryCard({ file, checked, total }) {
 
 /* ─── Parse markdown checklist ─── */
 function parseChecklist(content = '') {
-  // Guard against null/undefined (Python None becomes JS null via PyWebView)
   if (!content) return { items: [], checked: 0, total: 0 };
   const lines = content.split('\n');
   const items = [];
   let checked = 0;
   for (const line of lines) {
-    // Handle indented items (^\s*), both - * + markers, optional space in []
     const matchDone = line.match(/^\s*[-*+]\s+\[x\]\s*(.*)/i);
     const matchTodo = line.match(/^\s*[-*+]\s+\[ *\]\s*(.*)/);
     if (matchDone) { items.push({ text: matchDone[1].trim(), checked: true }); checked++; }
@@ -171,12 +223,12 @@ function parseChecklist(content = '') {
 
 /* ─── Main Dashboard Component ─── */
 export default function Dashboard() {
-  const [todayFiles, setTodayFiles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [streak, setStreak] = useState(1);
-  const [dailyCompletion, setDailyCompletion] = useState({});
-  const [fireDays, setFireDays] = useState({});
+  const [todayFiles, setTodayFiles]     = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [streak, setStreak]             = useState(1);
+  const [fireDays, setFireDays]         = useState({});
   const [fireBtnClicked, setFireBtnClicked] = useState(false);
+  const [isCalOpen, setIsCalOpen]       = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -191,65 +243,62 @@ export default function Dashboard() {
       trackEvent('dashboard_view');
     };
     load();
-
-    // Load fire days
     try {
       const rawFire = localStorage.getItem('ms_fire_days');
       if (rawFire) setFireDays(JSON.parse(rawFire));
-    } catch { }
+    } catch {}
   }, []);
 
-  // Compute real streak from localStorage
   useEffect(() => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const raw = localStorage.getItem('ms_streak_data');
-      let data = raw ? JSON.parse(raw) : null;
-
+      const raw  = localStorage.getItem('ms_streak_data');
+      let data   = raw ? JSON.parse(raw) : null;
       if (!data) {
         data = { lastDate: today, count: 1 };
       } else {
-        const diffMs = new Date(today) - new Date(data.lastDate);
-        const diff = Math.round(diffMs / 86400000);
-        if (diff === 0) {
-          // same day — use stored count
-        } else if (diff === 1) {
-          data = { lastDate: today, count: data.count + 1 };
-        } else {
-          data = { lastDate: today, count: 1 };
-        }
+        const diff = Math.round((new Date(today) - new Date(data.lastDate)) / 86400000);
+        if (diff === 1)      data = { lastDate: today, count: data.count + 1 };
+        else if (diff > 1)   data = { lastDate: today, count: 1 };
       }
-
       localStorage.setItem('ms_streak_data', JSON.stringify(data));
       setStreak(data.count);
     } catch { setStreak(1); }
   }, []);
 
-  // Compute overall stats
   const stats = useMemo(() => {
     let totalChecked = 0, totalItems = 0;
     const enriched = todayFiles.map(f => {
       const { items, checked, total } = parseChecklist(f.content);
       totalChecked += checked;
-      totalItems += total;
+      totalItems   += total;
       return { ...f, items, checked, total };
     });
     const pct = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
     return { enriched, totalChecked, totalItems, pct };
   }, [todayFiles]);
 
-  // Update daily completion in localStorage when stats are ready
   useEffect(() => {
     if (loading) return;
     try {
       const today = new Date().toISOString().split('T')[0];
-      const raw = localStorage.getItem('ms_daily_completion');
-      const data = raw ? JSON.parse(raw) : {};
+      const raw   = localStorage.getItem('ms_daily_completion');
+      const data  = raw ? JSON.parse(raw) : {};
       data[today] = stats.pct;
       localStorage.setItem('ms_daily_completion', JSON.stringify(data));
-      setDailyCompletion(data);
-    } catch { }
+    } catch {}
   }, [stats.pct, loading]);
+
+  const markFire = (eventName) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updated  = { ...fireDays, [todayStr]: true };
+    setFireDays(updated);
+    localStorage.setItem('ms_fire_days', JSON.stringify(updated));
+    trackEvent(eventName);
+  };
+
+  const todayStr    = new Date().toISOString().split('T')[0];
+  const alreadyFired = fireDays[todayStr];
 
   return (
     <div className="dashboard-container fade-in">
@@ -257,6 +306,7 @@ export default function Dashboard() {
         <div className="skeleton-loader">Loading dashboard...</div>
       ) : (
         <div className="dashboard-grid">
+
           {/* ── Left Column ── */}
           <div className="dashboard-left">
             <div className="ds-stats-bar">
@@ -274,45 +324,44 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* 🔥 완료 button — visible when 5+ tasks checked */}
-            {stats.totalChecked >= 5 && (() => {
-              const todayStr = new Date().toISOString().split('T')[0];
-              const alreadyFired = fireDays[todayStr];
-              return (
-                <button
-                  className={`ds-fire-btn ${alreadyFired ? 'fired' : ''}`}
-                  onClick={() => {
-                    if (alreadyFired) return;
-                    const updated = { ...fireDays, [todayStr]: true };
-                    setFireDays(updated);
-                    localStorage.setItem('ms_fire_days', JSON.stringify(updated));
-                    setFireBtnClicked(true);
-                    setTimeout(() => setFireBtnClicked(false), 2000);
-                    trackEvent('fire_complete');
-                  }}
-                >
-                  {alreadyFired ? (
-                    <>
-                      <CheckCircle2 size={18} className="fire-icon-done" /> Today Marked!
-                    </>
-                  ) : fireBtnClicked ? (
-                    <>
-                      <Flame size={18} className="fire-icon animate-pulse" /> Marking...
-                    </>
-                  ) : (
-                    <>
-                      <Flame size={18} className="fire-icon" /> Mark Today Complete
-                    </>
-                  )}
-                </button>
+            {/* 일정이 없을 때: 오늘 일정 없음 버튼 */}
+            {stats.totalItems === 0 && (
+              <button
+                className={`ds-fire-btn no-tasks-btn ${alreadyFired ? 'fired' : ''}`}
+                onClick={() => { if (!alreadyFired) markFire('no_task_fire'); }}
+              >
+                {alreadyFired
+                  ? <><CheckCircle2 size={18} className="fire-icon-done"/> 오늘 완료! 🔥</>
+                  : <><Flame size={18} className="fire-icon"/> 오늘 일정 없음</>
+                }
+              </button>
+            )}
 
-              );
-            })()}
+            {/* 일정이 있고 5개 이상 완료 시: Mark Today Complete */}
+            {stats.totalItems > 0 && stats.totalChecked >= 5 && (
+              <button
+                className={`ds-fire-btn ${alreadyFired ? 'fired' : ''}`}
+                onClick={() => {
+                  if (alreadyFired) return;
+                  setFireBtnClicked(true);
+                  setTimeout(() => setFireBtnClicked(false), 2000);
+                  markFire('fire_complete');
+                }}
+              >
+                {alreadyFired
+                  ? <><CheckCircle2 size={18} className="fire-icon-done"/> Today Marked!</>
+                  : fireBtnClicked
+                    ? <><Flame size={18} className="fire-icon animate-pulse"/> Marking...</>
+                    : <><Flame size={18} className="fire-icon"/> Mark Today Complete</>
+                }
+              </button>
+            )}
 
             <div className="ds-section-label">
-              <TrendingUp size={15} />
+              <TrendingUp size={15}/>
               Today's Tasks
             </div>
+
             {stats.enriched.length === 0 ? (
               <div className="glass-card ds-empty">
                 <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🌅</div>
@@ -320,24 +369,18 @@ export default function Dashboard() {
                   Your slate is clean!
                 </p>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  Add tasks for tomorrow in the <strong>Files → Tomorrow</strong> tab and they'll show up here.
+                  Add tasks for tomorrow in the <strong>Files → Tomorrow</strong> tab.
                 </p>
               </div>
             ) : (
               stats.enriched.map((f, i) => (
-                <TaskSummaryCard
-                  key={i}
-                  file={f}
-                  checked={f.checked}
-                  total={f.total}
-                />
+                <TaskSummaryCard key={i} file={f} checked={f.checked} total={f.total}/>
               ))
             )}
           </div>
 
           {/* ── Right Column ── */}
           <div className="dashboard-right">
-            {/* Donut */}
             <div className="glass-card ds-widget donut-card">
               <p className="ds-widget-title">Today's Progress</p>
               <DonutChart
@@ -346,19 +389,27 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Consistency + This Week */}
+            {/* Streak (formerly: Consistency + This Week) */}
             <div className="glass-card ds-widget">
-              <p className="ds-widget-title" style={{ marginBottom: '16px' }}>Consistency · This Week</p>
-              <WeeklyConsistency streak={streak} fireDays={fireDays} />
+              <div className="ds-widget-title-row">
+                <p className="ds-widget-title">Streak</p>
+                <button className="cal-open-btn" onClick={() => setIsCalOpen(true)} title="View full history">+</button>
+              </div>
+              <StreakWidget streak={streak} fireDays={fireDays} onOpenCalendar={() => setIsCalOpen(true)}/>
             </div>
 
-            {/* Daily Quote */}
             <div className="glass-card ds-widget">
               <p className="ds-widget-title">Daily Inspiration</p>
-              <QuoteWidget />
+              <QuoteWidget/>
             </div>
           </div>
+
         </div>
+      )}
+
+      {/* Calendar modal */}
+      {isCalOpen && (
+        <StreakCalendar fireDays={fireDays} onClose={() => setIsCalOpen(false)}/>
       )}
     </div>
   );

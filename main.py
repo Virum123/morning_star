@@ -373,7 +373,7 @@ def display_ui(config):
             
     api = Api(config)
     global window
-    window = webview.create_window('Morning Star', url=html_file, width=1100, height=750, js_api=api)
+    window = webview.create_window('Morning Star', url=html_file, width=1100, height=880, js_api=api)
 
     # Set window icon (title bar + taskbar)
     if hasattr(sys, '_MEIPASS'):

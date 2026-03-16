@@ -490,6 +490,219 @@ body.theme-dark .ds-fire-btn {
   color: var(--success-color, #10b981);
 }
 
+/* ── ds-widget title row (title + open-cal btn) ── */
+.ds-widget-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.ds-widget-title-row .ds-widget-title {
+  margin-bottom: 0;
+}
+
+/* ── Calendar open button (+) ── */
+.cal-open-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1.5px solid var(--card-border);
+  background: var(--glass-bg);
+  color: var(--accent-color);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.cal-open-btn:hover {
+  background: var(--sidebar-active-bg);
+  border-color: var(--accent-color);
+}
+
+/* ── Week month label ── */
+.week-month-row {
+  margin-bottom: 8px;
+}
+.week-month-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ── Streak widget spacing ── */
+.streak-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.streak-top .cal-open-btn {
+  margin-left: auto;
+}
+
+/* ── No-tasks fire button ── */
+.no-tasks-btn {
+  border-color: rgba(249, 115, 22, 0.3);
+  background: rgba(249, 115, 22, 0.04);
+  color: var(--text-secondary);
+  animation: none;
+}
+.no-tasks-btn:hover {
+  background: rgba(249, 115, 22, 0.1);
+  color: #ff6a00;
+  border-color: rgba(249, 115, 22, 0.5);
+}
+.no-tasks-btn .fire-icon {
+  color: var(--text-muted);
+}
+.no-tasks-btn:hover .fire-icon {
+  color: #ff6a00;
+}
+
+/* ── Streak Calendar Modal ── */
+.cal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+.cal-modal {
+  width: 360px;
+  padding: 20px;
+  border-radius: 20px;
+  animation: slideUp 0.18s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.cal-title-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.cal-month-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.cal-fire-stat {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.cal-nav {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1.5px solid var(--card-border);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.cal-nav:hover {
+  background: var(--sidebar-active-bg);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+.cal-close-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1.5px solid var(--card-border);
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.cal-close-btn:hover {
+  background: rgba(255, 80, 80, 0.1);
+  color: #ff5050;
+  border-color: rgba(255, 80, 80, 0.4);
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+  gap: 2px;
+}
+.cal-wd {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: background 0.12s ease;
+  cursor: default;
+}
+.cal-cell.empty {
+  background: transparent;
+}
+.cal-cell.today {
+  background: var(--sidebar-active-bg);
+  outline: 1.5px solid var(--accent-color);
+  color: var(--accent-color);
+}
+.cal-cell.fire {
+  background: rgba(255, 106, 0, 0.08);
+  font-size: 0.95rem;
+}
+.cal-cell.future {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+.cal-cell:not(.empty):not(.future):hover {
+  background: var(--sidebar-active-bg);
+}
+
 /* ── Fire day in WeekCalendar ── */
 .week-day.fire-day {
   background: rgba(255, 106, 0, 0.08);
