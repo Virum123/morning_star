@@ -1,22 +1,71 @@
-<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
-  <!-- 흰 배경 -->
-  <rect width="256" height="256" fill="white"/>
-  
-  <!-- 검은 손잡이 (간단한 손잡이 모양) -->
-  <rect x="120" y="50" width="16" height="80" fill="black" rx="8"/>
-  
-  <!-- 사슬 (연결된 링들) -->
-  <circle cx="128" cy="140" r="6" fill="none" stroke="black" stroke-width="3"/>
-  <circle cx="128" cy="155" r="6" fill="none" stroke="black" stroke-width="3"/>
-  <circle cx="128" cy="170" r="6" fill="none" stroke="black" stroke-width="3"/>
-  <circle cx="128" cy="185" r="6" fill="none" stroke="black" stroke-width="3"/>
-  
-  <!-- 일출 (노란 해) -->
-  <circle cx="128" cy="210" r="20" fill="yellow"/>
-  <!-- 햇살 (선들) -->
-  <line x1="128" y1="180" x2="128" y2="190" stroke="yellow" stroke-width="3"/>
-  <line x1="108" y1="195" x2="118" y2="200" stroke="yellow" stroke-width="3"/>
-  <line x1="148" y1="195" x2="138" y2="200" stroke="yellow" stroke-width="3"/>
-  <line x1="108" y1="225" x2="118" y2="220" stroke="yellow" stroke-width="3"/>
-  <line x1="148" y1="225" x2="138" y2="220" stroke="yellow" stroke-width="3"/>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- background -->
+  <rect width="512" height="512" fill="#0d0d0d"/>
+
+  <!-- ─── Spiked ball (solid white) ─── -->
+  <polygon points="158.0,178.0 174.0,239.8 215.3,191.1 202.9,253.7 261.2,227.7 222.9,278.8 286.7,280.6 230.0,310.0 286.7,339.4 222.9,341.2 261.2,392.3 202.9,366.3 215.3,428.9 174.0,380.2 158.0,442.0 142.0,380.2 100.7,428.9 113.1,366.3 54.8,392.3 93.1,341.2 29.3,339.4 86.0,310.0 29.3,280.6 93.1,278.8 54.8,227.7 113.1,253.7 100.7,191.1 142.0,239.8" fill="white"/>
+
+  <!-- centre hole -->
+  <circle cx="158" cy="310" r="62" fill="#0d0d0d"/>
+
+  <!-- hook ring at top of ball -->
+  <circle cx="158" cy="163" r="13" fill="#0d0d0d" stroke="white" stroke-width="3"/>
+  <!-- small connector loop -->
+  <circle cx="158" cy="150" r="7"  fill="#0d0d0d" stroke="white" stroke-width="2.5"/>
+
+  <!-- ─── Chain links ─── -->
+  <g transform="translate(168.7,142.5) rotate(-40.2)"><ellipse rx="12" ry="6" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(190.2,126.2) rotate(-33.6)"><ellipse rx="6" ry="12" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(211.9,113.8) rotate(-26.0)"><ellipse rx="12" ry="6" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(233.6,105.0) rotate(-17.4)"><ellipse rx="6" ry="12" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(255.5,100.1) rotate(-8.0)"><ellipse rx="12" ry="6" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(277.5,98.9) rotate(1.8)"><ellipse rx="6" ry="12" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(299.6,101.4) rotate(11.3)"><ellipse rx="12" ry="6" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(321.9,107.8) rotate(20.2)"><ellipse rx="6" ry="12" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(344.2,117.8) rotate(28.1)"><ellipse rx="12" ry="6" fill="none" stroke="white" stroke-width="2.5"/></g>
+  <g transform="translate(366.7,131.7) rotate(34.9)"><ellipse rx="6" ry="12" fill="none" stroke="white" stroke-width="2.5"/></g>
+
+  <!-- ─── Handle ─── -->
+  <defs>
+    <clipPath id="hc">
+      <rect x="360" y="140" width="38" height="305" rx="19"/>
+    </clipPath>
+  </defs>
+  <!-- handle body (dark fill + white border) -->
+  <rect x="360" y="140" width="38" height="305" rx="19"
+        fill="#0d0d0d" stroke="white" stroke-width="3"/>
+  <!-- diagonal wrap stripes -->
+  <g clip-path="url(#hc)">
+    <line x1="340" y1="178" x2="418" y2="120" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="196" x2="418" y2="138" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="214" x2="418" y2="156" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="232" x2="418" y2="174" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="250" x2="418" y2="192" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="268" x2="418" y2="210" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="286" x2="418" y2="228" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="304" x2="418" y2="246" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="322" x2="418" y2="264" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="340" x2="418" y2="282" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="358" x2="418" y2="300" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="376" x2="418" y2="318" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="394" x2="418" y2="336" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="412" x2="418" y2="354" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="430" x2="418" y2="372" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="448" x2="418" y2="390" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="466" x2="418" y2="408" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="484" x2="418" y2="426" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="502" x2="418" y2="444" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="520" x2="418" y2="462" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="538" x2="418" y2="480" stroke="white" stroke-width="2.5"/>
+    <line x1="340" y1="556" x2="418" y2="498" stroke="white" stroke-width="2.5"/>
+  </g>
+  <!-- end caps for 3-D cylinder feel -->
+  <ellipse cx="379" cy="140"      rx="18" ry="8" fill="#0d0d0d" stroke="white" stroke-width="2.5"/>
+  <ellipse cx="379" cy="445"   rx="18" ry="8" fill="#0d0d0d" stroke="white" stroke-width="2.5"/>
+
+  <!-- ─── Sparkles ─── -->
+  <g transform="translate(342,200)"><line x1="0" y1="-14" x2="0" y2="14" stroke="white" stroke-width="2.5"/><line x1="-14" y1="0" x2="14" y2="0" stroke="white" stroke-width="2.5"/><line x1="-4.9" y1="-4.9" x2="4.9" y2="4.9" stroke="white" stroke-width="2.0"/><line x1="4.9" y1="-4.9" x2="-4.9" y2="4.9" stroke="white" stroke-width="2.0"/></g>
+  <g transform="translate(330,232)"><line x1="0" y1="-9" x2="0" y2="9" stroke="white" stroke-width="1.8"/><line x1="-9" y1="0" x2="9" y2="0" stroke="white" stroke-width="1.8"/><line x1="-3.1" y1="-3.1" x2="3.1" y2="3.1" stroke="white" stroke-width="1.3"/><line x1="3.1" y1="-3.1" x2="-3.1" y2="3.1" stroke="white" stroke-width="1.3"/></g>
+
 </svg>
