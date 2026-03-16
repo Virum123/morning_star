@@ -373,9 +373,15 @@ def display_ui(config):
             
     api = Api(config)
     global window
-    # Added drag_drop=True if it exists? pywebview handles file drops if we don't prevent them?
     window = webview.create_window('Morning Star', url=html_file, width=1100, height=750, js_api=api)
-    webview.start()
+
+    # Set window icon (title bar + taskbar)
+    if hasattr(sys, '_MEIPASS'):
+        icon_path = os.path.join(sys._MEIPASS, 'morning_star.ico')
+    else:
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'morning_star.ico')
+
+    webview.start(icon=icon_path if os.path.exists(icon_path) else None)
 
 def main():
     import time

@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui/dist', 'ui/dist')],
+    datas=[('ui/dist', 'ui/dist'), ('morning_star.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
