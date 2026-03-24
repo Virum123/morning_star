@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Flame, CheckCircle2, Circle, TrendingUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { api } from '../utils/api';
 import { trackEvent } from '../utils/analytics';
+import { t } from '../utils/i18n';
 import './Dashboard.css';
 
 /* ─── Donut Chart (SVG, no library) ─── */
@@ -24,9 +25,9 @@ function DonutChart({ percent, size = 140, strokeWidth = 14, label }) {
           </linearGradient>
         </defs>
         <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle" className="donut-pct">{percent}%</text>
-        <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle" className="donut-sub">done</text>
+        <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle" className="donut-sub">{label ? label.doneText : "done"}</text>
       </svg>
-      {label && <p className="donut-label">{label}</p>}
+      {label && <p className="donut-label">{label.text}</p>}
     </div>
   );
 }
@@ -198,7 +199,7 @@ function TaskSummaryCard({ file, checked, total }) {
           </li>
         ))}
         {(file.items?.length || 0) > 5 && (
-          <li className="ds-task-item more">+{file.items.length - 5} more items...</li>
+          <li className="ds-task-item more">+{file.items.length - 5} items</li>
         )}
       </ul>
     </div>
@@ -221,7 +222,7 @@ function parseChecklist(content = '') {
 }
 
 /* ─── Main Dashboard Component ─── */
-export default function Dashboard() {
+export default function Dashboard({ lang = 'ko' }) {
   const [todayFiles, setTodayFiles]     = useState([]);
   const [loading, setLoading]           = useState(true);
   const [streak, setStreak]             = useState(1);
@@ -311,32 +312,30 @@ export default function Dashboard() {
             <div className="ds-stats-bar">
               <div className="ds-stat-chip">
                 <span className="ds-stat-num">{stats.totalItems}</span>
-                <span className="ds-stat-label">Total Tasks</span>
+                <span className="ds-stat-label">{t(lang, 'totalTasks')}</span>
               </div>
               <div className="ds-stat-chip">
                 <span className="ds-stat-num">{stats.totalChecked}</span>
-                <span className="ds-stat-label">Completed</span>
+                <span className="ds-stat-label">{t(lang, 'completed')}</span>
               </div>
               <div className="ds-stat-chip">
                 <span className="ds-stat-num">{stats.totalItems - stats.totalChecked}</span>
-                <span className="ds-stat-label">Remaining</span>
+                <span className="ds-stat-label">{t(lang, 'remaining')}</span>
               </div>
             </div>
 
-            {/* 일정이 없을 때: 오늘 일정 없음 버튼 */}
             {stats.totalItems === 0 && (
               <button
                 className={`ds-fire-btn no-tasks-btn ${alreadyFired ? 'fired' : ''}`}
                 onClick={() => { if (!alreadyFired) markFire('no_task_fire'); }}
               >
                 {alreadyFired
-                  ? <><CheckCircle2 size={18} className="fire-icon-done"/> 오늘 완료! 🔥</>
-                  : <><Flame size={18} className="fire-icon"/> 오늘 일정 없음</>
+                  ? <><CheckCircle2 size={18} className="fire-icon-done"/> {t(lang, 'todayMarked')}</>
+                  : <><Flame size={18} className="fire-icon"/> {t(lang, 'noTasks')}</>
                 }
               </button>
             )}
 
-            {/* 일정이 있고 5개 이상 완료 시: Mark Today Complete */}
             {stats.totalItems > 0 && stats.totalChecked >= 5 && (
               <button
                 className={`ds-fire-btn ${alreadyFired ? 'fired' : ''}`}
@@ -348,28 +347,26 @@ export default function Dashboard() {
                 }}
               >
                 {alreadyFired
-                  ? <><CheckCircle2 size={18} className="fire-icon-done"/> Today Marked!</>
+                  ? <><CheckCircle2 size={18} className="fire-icon-done"/> {t(lang, 'todayMarked')}</>
                   : fireBtnClicked
-                    ? <><Flame size={18} className="fire-icon animate-pulse"/> Marking...</>
-                    : <><Flame size={18} className="fire-icon"/> Mark Today Complete</>
+                    ? <><Flame size={18} className="fire-icon animate-pulse"/>...</>
+                    : <><Flame size={18} className="fire-icon"/> {t(lang, 'markTodayComplete')}</>
                 }
               </button>
             )}
 
             <div className="ds-section-label">
               <TrendingUp size={15}/>
-              Today's Tasks
+              {t(lang, 'todaysTasks')}
             </div>
 
             {stats.enriched.length === 0 ? (
               <div className="glass-card ds-empty">
                 <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🌅</div>
                 <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                  Your slate is clean!
+                  {t(lang, 'slateClean')}
                 </p>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  Add tasks for tomorrow in the <strong>Files → Tomorrow</strong> tab.
-                </p>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: t(lang, 'addTasksTomorrow') }} />
               </div>
             ) : (
               stats.enriched.map((f, i) => (
@@ -381,24 +378,23 @@ export default function Dashboard() {
           {/* ── Right Column ── */}
           <div className="dashboard-right">
             <div className="glass-card ds-widget donut-card">
-              <p className="ds-widget-title">Today's Progress</p>
+              <p className="ds-widget-title">{t(lang, 'todaysProgress')}</p>
               <DonutChart
                 percent={stats.pct}
-                label={`${stats.totalChecked} of ${stats.totalItems} tasks done`}
+                label={{ text: `${stats.totalChecked} / ${stats.totalItems}`, doneText: t(lang, 'done') }}
               />
             </div>
 
-            {/* Streak (formerly: Consistency + This Week) */}
             <div className="glass-card ds-widget">
               <div className="ds-widget-title-row">
-                <p className="ds-widget-title">Streak</p>
+                <p className="ds-widget-title">{t(lang, 'streak')}</p>
                 <button className="cal-open-btn" onClick={() => setIsCalOpen(true)} title="View full history">+</button>
               </div>
               <StreakWidget streak={streak} fireDays={fireDays}/>
             </div>
 
             <div className="glass-card ds-widget">
-              <p className="ds-widget-title">Daily Inspiration</p>
+              <p className="ds-widget-title">{t(lang, 'dailyInspiration')}</p>
               <QuoteWidget/>
             </div>
           </div>

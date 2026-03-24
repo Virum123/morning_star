@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { ListTodo, FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard } from 'lucide-react';
 import { api } from './utils/api';
 import { trackEvent, setAnalyticsUser } from './utils/analytics';
+import { t } from './utils/i18n';
 import './App.css';
 import appIcon from './assets/morning_star_app_icon.png';
 import coverImage from './assets/morning_star_cover.png';
+import { DYNSUN } from './utils/suns';
 
 // Components
 import Tasks from './components/Tasks';
@@ -39,6 +41,7 @@ function applyThemeMode(theme, date = new Date()) {
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState('light');
+  const [lang, setLang] = useState('ko');
   const [isReady, setIsReady] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [nickname, setNickname] = useState('Alex');
@@ -58,6 +61,7 @@ function App() {
         const nextTheme = config.theme || 'light';
         applyThemeMode(nextTheme);
         setTheme(nextTheme);
+        setLang(config.language || 'ko');
         if (config.user_id) setAnalyticsUser(config.user_id);
         if (config.nickname) setNickname(config.nickname);
       } catch (e) {
@@ -100,10 +104,16 @@ function App() {
     };
     window.addEventListener('nicknameChanged', handleNicknameChange);
 
+    const handleLanguageChange = (e) => {
+      setLang(e.detail);
+    };
+    window.addEventListener('languageChanged', handleLanguageChange);
+
     return () => {
       window.removeEventListener('pywebviewready', initTheme);
       window.removeEventListener('themeChanged', handleThemeChange);
       window.removeEventListener('nicknameChanged', handleNicknameChange);
+      window.removeEventListener('languageChanged', handleLanguageChange);
     };
   }, []);
 
@@ -120,10 +130,18 @@ function App() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return `Good Morning, ${nickname}! ☀️`;
-    if (hour >= 12 && hour < 17) return `Good Afternoon, ${nickname}!`;
-    if (hour >= 17 && hour < 21) return `Good Evening, ${nickname}! 🌅`;
-    return `Good Night, ${nickname}! 🌙`;
+    if (hour >= 5 && hour < 12) return `${t(lang, 'goodMorning')}, ${nickname}! ☀️`;
+    if (hour >= 12 && hour < 17) return `${t(lang, 'goodAfternoon')}, ${nickname}!`;
+    if (hour >= 17 && hour < 21) return `${t(lang, 'goodEvening')}, ${nickname}! 🌅`;
+    return `${t(lang, 'goodNight')}, ${nickname}! 🌙`;
+  };
+
+  const getDynamicSun = () => {
+    const phase = getDynamicThemePhase(new Date());
+    if (phase === 'morning') return DYNSUN.MORNING;
+    if (phase === 'day') return DYNSUN.NOON;
+    if (phase === 'sunset') return DYNSUN.EVENING;
+    return DYNSUN.NIGHT;
   };
 
   const renderContent = () => {
@@ -135,18 +153,18 @@ function App() {
       <div className="main-content-layout" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div className="app-header-greeting">
           <h1 className="tab-title">{getGreeting()}</h1>
-          <p>Here's what you have planned for today.</p>
+          <p>{t(lang, 'greetingDesc')}</p>
         </div>
         {children}
       </div>
     );
 
     switch (activeTab) {
-      case 'dashboard': return wrapper(<Dashboard key={dashboardKey} />);
-      case 'tasks': return wrapper(<Tasks key={tasksKey} />);
-      case 'files': return wrapper(<Files />);
-      case 'settings': return wrapper(<Settings />);
-      default: return wrapper(<Tasks key={tasksKey} />);
+      case 'dashboard': return wrapper(<Dashboard key={dashboardKey} lang={lang} />);
+      case 'tasks': return wrapper(<Tasks key={tasksKey} lang={lang} />);
+      case 'files': return wrapper(<Files lang={lang} />);
+      case 'settings': return wrapper(<Settings lang={lang} />);
+      default: return wrapper(<Tasks key={tasksKey} lang={lang} />);
     }
   };
 
@@ -154,10 +172,10 @@ function App() {
   const handleDrop = (e) => e.preventDefault();
 
   const navItems = [
-    { id: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-    { id: 'tasks', icon: <ListTodo size={18} />, label: 'Tasks' },
-    { id: 'files', icon: <FileText size={18} />, label: 'Files' },
-    { id: 'settings', icon: <SettingsIcon size={18} />, label: 'Settings' },
+    { id: 'dashboard', icon: <LayoutDashboard size={18} />, label: t(lang, 'dashboard') },
+    { id: 'tasks', icon: <ListTodo size={18} />, label: t(lang, 'tasks') },
+    { id: 'files', icon: <FileText size={18} />, label: t(lang, 'files') },
+    { id: 'settings', icon: <SettingsIcon size={18} />, label: t(lang, 'settings') },
   ];
 
   return (
@@ -165,18 +183,10 @@ function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <img src={appIcon} alt="Morning Star app icon" className="sidebar-brand-image" />
+          <img src={getDynamicSun()} alt="Morning Star app icon" className="sidebar-brand-image" />
           <div>
             <h1 className="sidebar-title">Morning Star</h1>
             <p className="sidebar-subtitle">Forge tomorrow tonight.</p>
-          </div>
-        </div>
-
-        <div className="sidebar-cover">
-          <img src={coverImage} alt="Morning Star cover art" className="sidebar-cover-image" />
-          <div className="sidebar-cover-copy">
-            <span className="sidebar-cover-kicker">Mac Edition</span>
-            <strong>Plan in the evening. Launch with clarity in the morning.</strong>
           </div>
         </div>
 
@@ -208,7 +218,7 @@ function App() {
             }}
           >
             <HelpCircle size={18} />
-            <span>How to Use</span>
+            <span>{t(lang, 'howToUse')}</span>
           </div>
         </nav>
       </aside>

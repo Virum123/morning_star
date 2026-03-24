@@ -110,6 +110,9 @@ def load_config():
         if "triggered_times_today" not in conf:
             conf["triggered_times_today"] = []
             
+        if "language" not in conf:
+            conf["language"] = "ko"
+            
         return conf
 
 def save_config(config):
@@ -432,7 +435,8 @@ def display_ui(config):
             
     api = Api(config)
     global window
-    window = webview.create_window('Morning Star', url=html_file, width=1100, height=790, js_api=api)
+    # 스크롤 방지를 위해 창 크기를 기본 1200x900으로 확대
+    window = webview.create_window('Morning Star', url=html_file, width=1200, height=900, js_api=api)
 
     # Set window icon (title bar + taskbar)
     if hasattr(sys, '_MEIPASS'):

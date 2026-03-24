@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Save, Clock } from 'lucide-react';
 import { api } from '../utils/api';
 import { trackEvent } from '../utils/analytics';
+import { t } from '../utils/i18n';
 import './Settings.css';
 
-export default function Settings() {
+export default function Settings({ lang = 'ko' }) {
   const [config, setConfig] = useState(null);
   const [nickname, setNickname] = useState('Alex');
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,7 @@ export default function Settings() {
         data.target_times = ['06:00'];
       }
       if (!data.theme) data.theme = 'light';
+      if (!data.language) data.language = 'ko';
       setConfig(data);
       if (data.nickname) setNickname(data.nickname);
       setLoading(false);
@@ -87,6 +89,10 @@ export default function Settings() {
     setConfig({ ...config, theme: e.target.value });
   };
 
+  const handleLanguageChange = (e) => {
+    setConfig({ ...config, language: e.target.value });
+  };
+
   const handleAddTime = () => {
     setConfig({ ...config, target_times: [...config.target_times, '07:00'] });
   };
@@ -106,10 +112,12 @@ export default function Settings() {
     await api.saveConfig({
       target_times: config.target_times,
       theme: config.theme,
+      language: config.language,
       nickname,
     });
-    trackEvent('settings_save', { target_times: config.target_times, theme: config.theme });
+    trackEvent('settings_save', { target_times: config.target_times, theme: config.theme, language: config.language });
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: config.theme }));
+    window.dispatchEvent(new CustomEvent('languageChanged', { detail: config.language }));
     window.dispatchEvent(new CustomEvent('nicknameChanged', { detail: nickname }));
     setTimeout(() => setSaving(false), 600);
   };
@@ -124,8 +132,8 @@ export default function Settings() {
 
             {/* Profile */}
             <div className="form-section">
-              <h3 className="section-title">Profile</h3>
-              <p className="section-desc">What should we call you in the morning?</p>
+              <h3 className="section-title">{t(lang, 'profile')}</h3>
+              <p className="section-desc">{t(lang, 'profileDesc')}</p>
               <input
                 type="text"
                 value={nickname}
@@ -139,8 +147,8 @@ export default function Settings() {
 
             {/* Target Times */}
             <div className="form-section">
-              <h3 className="section-title">Target Times</h3>
-              <p className="section-desc">App will display tasks automatically after these times. Click the clock icon to edit.</p>
+              <h3 className="section-title">{t(lang, 'targetTimes')}</h3>
+              <p className="section-desc">{t(lang, 'targetTimesDesc')}</p>
 
               <div className="times-list">
                 {config.target_times.map((time, idx) => {
@@ -233,18 +241,29 @@ export default function Settings() {
 
             {/* Appearance */}
             <div className="form-section">
-              <h3 className="section-title">Appearance</h3>
-              <p className="section-desc">Choose Light, Dark, or a Time Adaptive theme that brightens and dims with the day.</p>
+              <h3 className="section-title">{t(lang, 'appearance')}</h3>
+              <p className="section-desc">{t(lang, 'appearanceDesc')}</p>
               <select value={config.theme} onChange={handleThemeChange} className="theme-select">
-                <option value="light">Light Mode</option>
-                <option value="dark">Dark Mode</option>
-                <option value="dynamic">Time Adaptive</option>
+                <option value="light">{t(lang, 'lightMode')}</option>
+                <option value="dark">{t(lang, 'darkMode')}</option>
+                <option value="dynamic">{t(lang, 'timeAdaptive')}</option>
+              </select>
+            </div>
+
+            {/* Language */}
+            <div className="form-section">
+              <h3 className="section-title">{t(lang, 'language')}</h3>
+              <p className="section-desc">{t(lang, 'languageDesc')}</p>
+              <select value={config.language} onChange={handleLanguageChange} className="theme-select">
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+                <option value="jp">日本語</option>
               </select>
             </div>
 
             <div className="form-actions">
               <button type="submit" className="btn btn-primary" disabled={saving}>
-                <Save size={18} /> {saving ? 'Saving...' : 'Save Settings'}
+                <Save size={18} /> {saving ? t(lang, 'saving') : t(lang, 'saveSettings')}
               </button>
             </div>
           </form>

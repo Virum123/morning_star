@@ -139,123 +139,89 @@ def draw_symbol(layer, scale=1.0, offset=(0, 0), metallic=False):
     stroke_color = rgba(IVORY)
     hole_color = rgba("#1a1418")
 
-    cx = ox + 330 * scale
-    cy = oy + 650 * scale
-    outer = 206 * scale
-    inner = 116 * scale
-    hole = 102 * scale
+    # Center of the sun (Now centered in the icon context)
+    cx = layer.width / 2
+    cy = layer.height / 2 - 40 * scale
+    
+    # Sun size doubled (outer original 206 -> 412)
+    outer = 412 * scale
+    inner = 232 * scale
     spikes = 14
 
-    polygon = star_points(cx, cy, outer, inner, spikes)
-    draw.polygon(polygon, fill=fill_color)
-    draw.ellipse((cx - hole, cy - hole, cx + hole, cy + hole), fill=hole_color)
-    draw.ellipse(
-        (cx - hole * 1.08, cy - hole * 1.08, cx + hole * 1.08, cy + hole * 1.08),
-        outline=rgba(EMBER_BRIGHT, 200),
-        width=max(2, int(8 * scale)),
-    )
-
-    hook_center = (cx, oy + 346 * scale)
-    hook_r = 20 * scale
-    draw.ellipse(
-        (
-            hook_center[0] - hook_r,
-            hook_center[1] - hook_r,
-            hook_center[0] + hook_r,
-            hook_center[1] + hook_r,
-        ),
-        fill=hole_color,
-        outline=stroke_color,
-        width=max(2, int(10 * scale)),
-    )
-    connector_r = 12 * scale
-    draw.ellipse(
-        (
-            hook_center[0] - connector_r,
-            hook_center[1] - hook_r - 22 * scale - connector_r,
-            hook_center[0] + connector_r,
-            hook_center[1] - hook_r - 22 * scale + connector_r,
-        ),
-        fill=hole_color,
-        outline=stroke_color,
-        width=max(2, int(8 * scale)),
-    )
-
-    p0 = (cx, oy + 324 * scale)
-    p1 = (ox + 568 * scale, oy + 118 * scale)
-    p2 = (ox + 778 * scale, oy + 302 * scale)
-
-    for index in range(10):
-        mid = 0.06 + index * 0.085
-        start = mid - 0.04
-        end = mid + 0.04
-        px, py = bezier_point(mid, p0, p1, p2)
-        ax, ay = bezier_point(start, p0, p1, p2)
-        bx, by = bezier_point(end, p0, p1, p2)
-        angle = math.degrees(math.atan2(by - ay, bx - ax))
-        flat = index % 2 == 0
-        link_w = int((56 if flat else 38) * scale)
-        link_h = int((34 if flat else 62) * scale)
-        link = draw_rotated_rounded_rect(
-            layer,
-            (link_w, link_h),
-            radius=max(8, int(16 * scale)),
-            angle=angle,
-            outline=stroke_color,
-            width=max(2, int(9 * scale)),
-            fill=None,
-        )
-        paste_centered(layer, link, (px, py))
-
-    handle_x = ox + 766 * scale
-    handle_y = oy + 286 * scale
-    handle_w = 88 * scale
-    handle_h = 420 * scale
+    # Handle (Horizon) settings
+    handle_w = 920 * scale
+    handle_h = 88 * scale
+    handle_x = cx - handle_w / 2
+    handle_y = cy + 20 * scale # Horizon slightly below center of sun
     radius = 44 * scale
     handle_box = (handle_x, handle_y, handle_x + handle_w, handle_y + handle_h)
+
+    # 1. Create a Clipping Mask for the Sun (must be above handle_y)
+    sun_layer = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    sun_draw = ImageDraw.Draw(sun_layer)
+    
+    polygon = star_points(cx, cy, outer, inner, spikes)
+    sun_draw.polygon(polygon, fill=fill_color)
+    
+    hole = 204 * scale
+    sun_draw.ellipse((cx - hole, cy - hole, cx + hole, cy + hole), fill=hole_color)
+    sun_draw.ellipse(
+        (cx - hole * 1.08, cy - hole * 1.08, cx + hole * 1.08, cy + hole * 1.08),
+        outline=rgba(EMBER_BRIGHT, 200),
+        width=max(4, int(12 * scale)),
+    )
+
+    # Apply clipping mask: keep only what is above handle top
+    mask_im = Image.new("L", layer.size, 0)
+    mask_draw = ImageDraw.Draw(mask_im)
+    mask_draw.rectangle((0, 0, layer.width, int(handle_y + 10 * scale)), fill=255)
+    
+    clipped_sun = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    clipped_sun.paste(sun_layer, (0, 0), mask_im)
+    layer.alpha_composite(clipped_sun)
+
+    # 2. Draw the horizontal handle (the horizon)
     draw.rounded_rectangle(handle_box, radius=radius, fill=rgba(IVORY), outline=rgba(IVORY), width=max(2, int(7 * scale)))
 
+    # Handle stripes (Keep pattern)
     stripe_layer = Image.new("RGBA", layer.size, (0, 0, 0, 0))
     stripe_draw = ImageDraw.Draw(stripe_layer)
-    for y in range(int(handle_y - 30 * scale), int(handle_y + handle_h + 60 * scale), int(34 * scale)):
+    for x in range(int(handle_x + 60 * scale), int(handle_x + handle_w - 60 * scale), int(40 * scale)):
         stripe_draw.line(
             (
-                handle_x - 28 * scale,
-                y + 84 * scale,
-                handle_x + handle_w + 28 * scale,
-                y,
+                x,
+                handle_y - 28 * scale,
+                x + 84 * scale,
+                handle_y + handle_h + 28 * scale,
             ),
             fill=rgba("#b67916", 180),
             width=max(2, int(8 * scale)),
         )
 
-    mask = Image.new("L", layer.size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle(handle_box, radius=radius, fill=255)
+    mask_handle = Image.new("L", layer.size, 0)
+    ImageDraw.Draw(mask_handle).rounded_rectangle(handle_box, radius=radius, fill=255)
     masked_stripes = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    masked_stripes.paste(stripe_layer, (0, 0), mask)
+    masked_stripes.paste(stripe_layer, (0, 0), mask_handle)
     layer.alpha_composite(masked_stripes)
 
-    cap_height = 16 * scale
+    # Handle caps (left and right)
+    cap_width = 16 * scale
     draw.ellipse(
-        (handle_x, handle_y - cap_height, handle_x + handle_w, handle_y + cap_height),
+        (handle_x - cap_width, handle_y, handle_x + cap_width, handle_y + handle_h),
         fill=hole_color,
         outline=rgba(IVORY),
         width=max(2, int(7 * scale)),
     )
     draw.ellipse(
-        (
-            handle_x,
-            handle_y + handle_h - cap_height,
-            handle_x + handle_w,
-            handle_y + handle_h + cap_height,
-        ),
+        (handle_x + handle_w - cap_width, handle_y, handle_x + handle_w + cap_width, handle_y + handle_h),
         fill=hole_color,
         outline=rgba(IVORY),
         width=max(2, int(7 * scale)),
     )
 
-    draw_sparkle(draw, (ox + 680 * scale, oy + 332 * scale), int(28 * scale), rgba(IVORY, 220), max(2, int(7 * scale)))
-    draw_sparkle(draw, (ox + 735 * scale, oy + 384 * scale), int(18 * scale), rgba(EMBER_BRIGHT, 220), max(2, int(5 * scale)))
+    # Sparkle removal or re-centering
+    # draw_sparkle(draw, (cx + 180 * scale, cy - 140 * scale), int(28 * scale), rgba(IVORY, 220), max(2, int(7 * scale)))
+    # draw_sparkle(draw, (cx - 150 * scale, cy - 180 * scale), int(18 * scale), rgba(EMBER_BRIGHT, 220), max(2, int(5 * scale)))
 
 
 def build_app_icon():
@@ -281,13 +247,13 @@ def build_app_icon():
     clipped.alpha_composite(panel)
 
     shadow = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
-    draw_symbol(shadow, scale=0.78, offset=(72, 76))
+    draw_symbol(shadow, scale=0.8) # Removed offset
     shadow = shadow.filter(ImageFilter.GaussianBlur(30))
     dim_shadow = Image.new("RGBA", shadow.size, rgba(SHADOW, 170))
     clipped.alpha_composite(Image.composite(dim_shadow, Image.new("RGBA", shadow.size, (0, 0, 0, 0)), shadow.split()[-1]))
 
     symbol = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
-    draw_symbol(symbol, scale=0.78, offset=(72, 76), metallic=True)
+    draw_symbol(symbol, scale=0.8, metallic=True)
     clipped.alpha_composite(symbol)
 
     ring_draw = ImageDraw.Draw(clipped)

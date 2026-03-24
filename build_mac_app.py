@@ -41,8 +41,6 @@ def build():
     run([sys.executable, "make_icon.py"])
 
     env = os.environ.copy()
-    existing_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = str(VENDOR_DIR) if not existing_pythonpath else f"{VENDOR_DIR}:{existing_pythonpath}"
     PYINSTALLER_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     PYINSTALLER_SPEC_DIR.mkdir(parents=True, exist_ok=True)
     env["PYINSTALLER_CONFIG_DIR"] = str(PYINSTALLER_CACHE_DIR)
@@ -78,8 +76,14 @@ def build():
     run(cmd, env=env)
 
     app_path = ROOT / "dist" / f"{APP_NAME}.app"
+    desktop_app_path = Path.home() / "Desktop" / f"{APP_NAME}.app"
+
     if app_path.exists():
-        print(f"\n[SUCCESS] Build complete: {app_path}")
+        import shutil
+        if desktop_app_path.exists():
+            shutil.rmtree(desktop_app_path)
+        shutil.copytree(app_path, desktop_app_path)
+        print(f"\n[SUCCESS] Build complete! App installed to your Desktop: {desktop_app_path}")
     else:
         print("\n[WARN] PyInstaller finished, but the .app bundle was not found where expected.")
 

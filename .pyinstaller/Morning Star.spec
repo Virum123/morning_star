@@ -9,7 +9,7 @@ a = Analysis(
     ['../main.py'],
     pathex=[],
     binaries=[],
-    datas=[('/Users/kimdaehoon/Desktop/morning_star/ui/mac_fallback.html', 'ui'), ('/Users/kimdaehoon/Desktop/morning_star/morning_star.ico', '.'), ('/Users/kimdaehoon/Desktop/morning_star/morning_star_app_icon.png', '.'), ('/Users/kimdaehoon/Desktop/morning_star/morning_star_cover.png', '.')],
+    datas=[('/Users/kimdaehoon/Desktop/morning_star/ui/dist', 'ui/dist'), ('/Users/kimdaehoon/Desktop/morning_star/ui/mac_fallback.html', 'ui'), ('/Users/kimdaehoon/Desktop/morning_star/morning_star.ico', '.'), ('/Users/kimdaehoon/Desktop/morning_star/morning_star_app_icon.png', '.'), ('/Users/kimdaehoon/Desktop/morning_star/morning_star_cover.png', '.')],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
