@@ -1,0 +1,20 @@
+{
+    "target_times": [
+        "06:00"
+    ],
+    "theme": "light",
+    "files": {
+        "tomorrow": [],
+        "today": [
+            {
+                "path": "/Users/kimdaehoon/Desktop/morning_star/.morning_star_data/app_data/tasks/20260320151920_todo_today.md",
+                "filename": "todo_today.md",
+                "added_date": "2026-03-20 15:19:20"
+            }
+        ],
+        "yesterday": {}
+    },
+    "last_display_date": "2026-03-20",
+    "triggered_times_today": [],
+    "nickname": "Peter"
+}

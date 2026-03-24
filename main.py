@@ -2,14 +2,45 @@ import os
 import sys
 import json
 import datetime
-import winreg
 import shutil
 import ctypes
 import subprocess
 
+try:
+    import winreg
+except ImportError:
+    winreg = None
+
+IS_WINDOWS = sys.platform.startswith("win")
+
 global_mutex = None
+window = None
+
+
+def get_legacy_non_windows_app_dir():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), ".morning_star_data")
+
+
+def migrate_legacy_non_windows_data(app_dir):
+    if IS_WINDOWS:
+        return
+
+    legacy_dir = get_legacy_non_windows_app_dir()
+    legacy_config = os.path.join(legacy_dir, "config.json")
+    target_config = os.path.join(app_dir, "config.json")
+
+    if not os.path.exists(legacy_config) or os.path.exists(target_config):
+        return
+
+    try:
+        shutil.copytree(legacy_dir, app_dir, dirs_exist_ok=True)
+        print(f"Migrated legacy data from {legacy_dir} to {app_dir}")
+    except Exception as e:
+        print(f"Failed to migrate legacy data: {e}")
 
 def acquire_single_instance():
+    if not IS_WINDOWS:
+        return True
     global global_mutex
     kernel32 = ctypes.windll.kernel32
     global_mutex = kernel32.CreateMutexW(None, False, "MorningStarBackgroundMutex")
@@ -18,11 +49,29 @@ def acquire_single_instance():
     return True
 
 def get_app_dir():
-    app_data = os.getenv('LOCALAPPDATA')
-    if not app_data:
-        app_data = os.path.expanduser('~')
-    app_dir = os.path.join(app_data, 'MorningStar')
+    custom_dir = os.getenv("MORNING_STAR_APP_DIR")
+    if custom_dir:
+        os.makedirs(custom_dir, exist_ok=True)
+        return custom_dir
+
+    if IS_WINDOWS:
+        app_data = os.getenv('LOCALAPPDATA')
+        if not app_data:
+            app_data = os.path.expanduser('~')
+        app_dir = os.path.join(app_data, 'MorningStar')
+    elif sys.platform == "darwin":
+        app_dir = os.path.join(
+            os.path.expanduser("~/Library/Application Support"),
+            "MorningStar",
+        )
+    else:
+        base_dir = os.getenv("XDG_DATA_HOME")
+        if not base_dir:
+            base_dir = os.path.join(os.path.expanduser("~"), ".local", "share")
+        app_dir = os.path.join(base_dir, "MorningStar")
+
     os.makedirs(app_dir, exist_ok=True)
+    migrate_legacy_non_windows_data(app_dir)
     return app_dir
 
 CONFIG_FILE = os.path.join(get_app_dir(), "config.json")
@@ -141,6 +190,9 @@ def show_notification(title, message):
 
 
 def setup_startup():
+    if not IS_WINDOWS or winreg is None:
+        print("Startup registration is only supported on Windows. Skipping.")
+        return
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
         script_path = os.path.abspath(__file__)
@@ -360,16 +412,23 @@ def get_html_path():
         return os.path.join(sys._MEIPASS, 'ui', 'dist', 'index.html')
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'dist', 'index.html')
 
+def get_fallback_html_path():
+    if hasattr(sys, "_MEIPASS"):
+        bundled_path = os.path.join(sys._MEIPASS, "ui", "mac_fallback.html")
+        if os.path.exists(bundled_path):
+            return bundled_path
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui", "mac_fallback.html")
+
 def display_ui(config):
     import webview
     
     html_file = get_html_path()
     if not os.path.exists(html_file):
         print(f"Error: UI build not found at {html_file}. Run 'npm run build' inside the ui folder.")
-        if not hasattr(sys, '_MEIPASS'):
+        if not hasattr(sys, '_MEIPASS') and IS_WINDOWS:
             html_file = "http://localhost:5173"
         else:
-            return
+            html_file = get_fallback_html_path()
             
     api = Api(config)
     global window
@@ -402,11 +461,16 @@ def main():
             display_ui(config)
             return
         elif sys.argv[1] == "--startup":
+            if not IS_WINDOWS:
+                print("Background startup mode is only supported on Windows. Opening the app window instead.")
+                display_ui(config)
+                return
+
             # Running from Windows Startup: stay silent in background and poll time
             if not acquire_single_instance():
                 print("Background process already running. Exiting.")
                 return
-                
+
             while True:
                 config = load_config()
                 triggered_time = check_should_run(config)
@@ -421,17 +485,18 @@ def main():
                 time.sleep(60)
             return
 
-    # If run manually by double-clicking the Exe (no args):
-    # Enforce background process to start
-    if hasattr(sys, 'frozen'):
-        cmd = [sys.executable, "--startup"]
-    else:
-        cmd = [sys.executable, os.path.abspath(__file__), "--startup"]
-    
-    subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+    if IS_WINDOWS:
+        # If run manually by double-clicking the Exe (no args):
+        # Enforce background process to start
+        if hasattr(sys, 'frozen'):
+            cmd = [sys.executable, "--startup"]
+        else:
+            cmd = [sys.executable, os.path.abspath(__file__), "--startup"]
 
-    # Setup startup string to ensure --startup flag is present if configured in the past
-    setup_startup()
+        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+
+        # Setup startup string to ensure --startup flag is present if configured in the past
+        setup_startup()
     
     if config.get("last_display_date") != today_str:
         config = perform_daily_migration(config, today_str)

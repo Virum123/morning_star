@@ -1,7 +1,9 @@
 [project]
 name = "morning-star"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Morning Star desktop app for Windows and macOS"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.9"
+dependencies = [
+    "pywebview>=6.0",
+]

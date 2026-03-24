@@ -1,6 +1,6 @@
 # Morning Star ✨
 
-Morning Star is a Windows background application that automatically greets you with your Markdown-based to-do list at your specified wake-up time. It enforces a healthy morning routine by explicitly showing your goals for the day in a premium, modern glassmorphism interface.
+Morning Star is a desktop app that greets you with your Markdown-based to-do list at your chosen wake-up time. It started as a Windows background app and now also includes a macOS app build path, refreshed app branding, and mac-friendly local storage.
 
 ## 🌟 Key Features
 - **Daily Auto-Migration:** Drop your `.md` task files into the **Tomorrow** tab. When the clock strikes your target time the next day, they automatically migrate to **Today**, and old tasks move into an organized **Yesterday** history.
@@ -16,14 +16,16 @@ Morning Star is a Windows background application that automatically greets you w
 4. **Wake Up:** Close the UI. The app will stay asleep in the background. At `07:00 AM`, the window will elegantly pop up displaying your "Today" tasks, greeting you by name!
 
 ## 🛠️ Tech Stack
-- **Backend/Host:** Python 3, `pywebview` (Edge/Chromium WebView2), `pyinstaller`, Windows Registry (winreg).
+- **Backend/Host:** Python 3, `pywebview`, `pyinstaller`, Windows Registry startup integration.
 - **Frontend UI:** Vite, React 18, standard custom CSS (No Tailwind).
-- **Storage:** Local `%LOCALAPPDATA%/MorningStar` JSON config and direct File I/O.
+- **Storage:** Local app data in `%LOCALAPPDATA%/MorningStar` on Windows and `~/Library/Application Support/MorningStar` on macOS.
 
 ## 📱 Future Roadmap
 Check out `next_step.md` for a guide on how to port this project into a Mobile App (Android/PlayStore) or a Toss Mini Web-App utilizing Capacitor or React Native.
 
-## 🏗️ Building for Production (Standalone EXE)
+## 🏗️ Building for Production
+
+### Windows EXE
 
 Follow these steps to package the app as a single distributable folder for users who don't have Python installed.
 
@@ -53,3 +55,32 @@ dist/Morning Star/Morning Star.exe
 ```
 Distribute the entire `dist/Morning Star/` folder to end-users.
 
+### macOS `.app`
+
+1. Install Python packages into the local vendor folder:
+```bash
+python3 -m pip install --target .vendor --upgrade Pillow PyInstaller pywebview
+```
+
+2. Install the UI dependencies and build the frontend:
+```bash
+cd ui
+npm ci
+npm run build
+cd ..
+```
+
+3. Generate the refreshed app icon and cover assets:
+```bash
+PYTHONPATH=.vendor python3 make_icon.py
+```
+
+4. Build the macOS app bundle:
+```bash
+PYTHONPATH=.vendor python3 build_mac_app.py
+```
+
+Output:
+```bash
+dist/Morning Star.app
+```

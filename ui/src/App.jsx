@@ -1,14 +1,40 @@
 import { useState, useEffect } from 'react';
-import { ListTodo, FileText, Settings as SettingsIcon, Sunrise, Sun, Sunset, Moon, MoonStar, HelpCircle, X, LayoutDashboard } from 'lucide-react';
+import { ListTodo, FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard } from 'lucide-react';
 import { api } from './utils/api';
 import { trackEvent, setAnalyticsUser } from './utils/analytics';
 import './App.css';
+import appIcon from './assets/morning_star_app_icon.png';
+import coverImage from './assets/morning_star_cover.png';
 
 // Components
 import Tasks from './components/Tasks';
 import Files from './components/Files';
 import Settings from './components/Settings';
 import Dashboard from './components/Dashboard';
+
+function getDynamicThemePhase(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 10) return 'morning';
+  if (hour >= 10 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 20) return 'sunset';
+  return 'night';
+}
+
+function applyThemeMode(theme, date = new Date()) {
+  const nextTheme = theme || 'light';
+  const phase = getDynamicThemePhase(date);
+  const { body } = document;
+  const useDarkChrome = nextTheme === 'dark' || (nextTheme === 'dynamic' && phase === 'night');
+
+  body.classList.toggle('theme-dark', useDarkChrome);
+  body.classList.toggle('theme-dynamic', nextTheme === 'dynamic');
+
+  if (nextTheme === 'dynamic') {
+    body.dataset.dynamicPhase = phase;
+  } else {
+    delete body.dataset.dynamicPhase;
+  }
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -29,13 +55,9 @@ function App() {
       initDone = true;
       try {
         const config = await api.getConfig();
-        if (config.theme === 'dark') {
-          document.body.classList.add('theme-dark');
-          setTheme('dark');
-        } else {
-          document.body.classList.remove('theme-dark');
-          setTheme('light');
-        }
+        const nextTheme = config.theme || 'light';
+        applyThemeMode(nextTheme);
+        setTheme(nextTheme);
         if (config.user_id) setAnalyticsUser(config.user_id);
         if (config.nickname) setNickname(config.nickname);
       } catch (e) {
@@ -68,11 +90,7 @@ function App() {
 
     const handleThemeChange = (e) => {
       const newTheme = e.detail;
-      if (newTheme === 'dark') {
-        document.body.classList.add('theme-dark');
-      } else {
-        document.body.classList.remove('theme-dark');
-      }
+      applyThemeMode(newTheme);
       setTheme(newTheme);
     };
     window.addEventListener('themeChanged', handleThemeChange);
@@ -88,6 +106,17 @@ function App() {
       window.removeEventListener('nicknameChanged', handleNicknameChange);
     };
   }, []);
+
+  useEffect(() => {
+    applyThemeMode(theme);
+    if (theme !== 'dynamic') return undefined;
+
+    const intervalId = window.setInterval(() => {
+      applyThemeMode('dynamic');
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [theme]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -124,16 +153,6 @@ function App() {
   const handleDragOver = (e) => e.preventDefault();
   const handleDrop = (e) => e.preventDefault();
 
-  const renderDynamicLogo = () => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour < 12) return <Sunrise className="sidebar-logo" size={26} />;
-    if (hour >= 12 && hour < 16) return <Sun className="sidebar-logo" size={26} />;
-    if (hour >= 16 && hour < 18) return <Sunset className="sidebar-logo" size={26} />;
-    if (hour >= 18 && hour < 22) return <Moon className="sidebar-logo" size={26} />;
-    if (hour >= 22 || hour < 3) return <MoonStar className="sidebar-logo" size={26} />;
-    return <Moon className="sidebar-logo" size={26} />;
-  };
-
   const navItems = [
     { id: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
     { id: 'tasks', icon: <ListTodo size={18} />, label: 'Tasks' },
@@ -146,8 +165,19 @@ function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          {renderDynamicLogo()}
-          <h1 className="sidebar-title">Morning ★</h1>
+          <img src={appIcon} alt="Morning Star app icon" className="sidebar-brand-image" />
+          <div>
+            <h1 className="sidebar-title">Morning Star</h1>
+            <p className="sidebar-subtitle">Forge tomorrow tonight.</p>
+          </div>
+        </div>
+
+        <div className="sidebar-cover">
+          <img src={coverImage} alt="Morning Star cover art" className="sidebar-cover-image" />
+          <div className="sidebar-cover-copy">
+            <span className="sidebar-cover-kicker">Mac Edition</span>
+            <strong>Plan in the evening. Launch with clarity in the morning.</strong>
+          </div>
         </div>
 
         <nav className="sidebar-nav">

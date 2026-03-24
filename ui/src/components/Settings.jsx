@@ -234,10 +234,11 @@ export default function Settings() {
             {/* Appearance */}
             <div className="form-section">
               <h3 className="section-title">Appearance</h3>
-              <p className="section-desc">Choose between Light or Dark theme.</p>
+              <p className="section-desc">Choose Light, Dark, or a Time Adaptive theme that brightens and dims with the day.</p>
               <select value={config.theme} onChange={handleThemeChange} className="theme-select">
                 <option value="light">Light Mode</option>
                 <option value="dark">Dark Mode</option>
+                <option value="dynamic">Time Adaptive</option>
               </select>
             </div>
 

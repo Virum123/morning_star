@@ -1,12 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules
+
+hiddenimports = ['Foundation', 'AppKit', 'WebKit']
+hiddenimports += collect_submodules('webview')
 
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui/dist', 'ui/dist'), ('morning_star.ico', '.')],
-    hiddenimports=[],
+    datas=[('ui/mac_fallback.html', 'ui'), ('morning_star.ico', '.'), ('morning_star_app_icon.png', '.'), ('morning_star_cover.png', '.')],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -32,7 +36,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['morning_star.ico'],
+    icon=['morning_star.icns'],
 )
 coll = COLLECT(
     exe,
@@ -42,4 +46,10 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name='Morning Star',
+)
+app = BUNDLE(
+    coll,
+    name='Morning Star.app',
+    icon='morning_star.icns',
+    bundle_identifier='com.morningstar.desktop',
 )

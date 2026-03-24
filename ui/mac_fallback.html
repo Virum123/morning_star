@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morning Star</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-main:
+        radial-gradient(circle at top left, rgba(255,255,255,0.98), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(255, 209, 94, 0.18), transparent 30%),
+        linear-gradient(135deg, #f6efe6 0%, #eedfcc 48%, #e3d0bb 100%);
+      --panel: rgba(255, 255, 255, 0.56);
+      --panel-strong: rgba(255, 255, 255, 0.82);
+      --line: rgba(43, 31, 23, 0.08);
+      --text-primary: #241b15;
+      --text-secondary: #72665b;
+      --accent-color: #d6a52c;
+      --accent-strong: #b98916;
+      --card-stripe: #f3cf66;
+      --divider: rgba(43, 31, 23, 0.08);
+      --success: #2b8f6d;
+      --danger: #ba4334;
+      --sidebar-bg: rgba(255, 250, 245, 0.58);
+      --shadow: 0 28px 80px rgba(92, 68, 47, 0.14);
+      --glass-blur: blur(22px);
+      --input-bg: rgba(255, 255, 255, 0.92);
+    }
+
+    body.theme-dark {
+      color-scheme: dark;
+      --bg-main:
+        radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(255, 209, 94, 0.12), transparent 30%),
+        linear-gradient(135deg, #191511 0%, #211913 45%, #2b2018 100%);
+      --panel: rgba(35, 28, 23, 0.58);
+      --panel-strong: rgba(45, 36, 30, 0.88);
+      --line: rgba(255, 248, 242, 0.08);
+      --text-primary: #f5ede6;
+      --text-secondary: #bfaea0;
+      --accent-color: #f1c557;
+      --accent-strong: #d4a32a;
+      --card-stripe: #ffd76f;
+      --divider: rgba(255, 248, 242, 0.08);
+      --success: #5ac49b;
+      --danger: #ff8b7c;
+      --sidebar-bg: rgba(27, 21, 18, 0.66);
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+      --input-bg: rgba(51, 42, 36, 0.92);
+    }
+
+    body.theme-dynamic {
+      transition: background 800ms ease, color 350ms ease, filter 800ms ease;
+    }
+
+    body.theme-dynamic[data-dynamic-phase="morning"] {
+      color-scheme: light;
+      --bg-main:
+        radial-gradient(circle at top left, rgba(255,255,255,0.92), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(255, 209, 94, 0.18), transparent 30%),
+        linear-gradient(135deg, #f6efe6 0%, #eedfcc 48%, #e3d0bb 100%);
+      --panel: rgba(255, 255, 255, 0.56);
+      --panel-strong: rgba(255, 255, 255, 0.82);
+      --line: rgba(43, 31, 23, 0.08);
+      --text-primary: #241b15;
+      --text-secondary: #72665b;
+      --accent-color: #d6a52c;
+      --accent-strong: #b98916;
+      --card-stripe: #f3cf66;
+      --divider: rgba(43, 31, 23, 0.08);
+      --success: #2b8f6d;
+      --danger: #ba4334;
+      --sidebar-bg: rgba(255, 250, 245, 0.58);
+      --shadow: 0 28px 80px rgba(92, 68, 47, 0.14);
+      --input-bg: rgba(255, 255, 255, 0.92);
+    }
+
+    body.theme-dynamic[data-dynamic-phase="day"] {
+      color-scheme: light;
+      --bg-main:
+        radial-gradient(circle at top left, rgba(255,255,255,0.98), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(154, 210, 255, 0.16), transparent 32%),
+        linear-gradient(135deg, #fff8ee 0%, #f4e9d8 48%, #e8dcca 100%);
+      --panel: rgba(255, 255, 255, 0.62);
+      --panel-strong: rgba(255, 255, 255, 0.88);
+      --line: rgba(43, 31, 23, 0.08);
+      --text-primary: #251d16;
+      --text-secondary: #73685d;
+      --accent-color: #c48f20;
+      --accent-strong: #9f7315;
+      --card-stripe: #f0cd72;
+      --divider: rgba(43, 31, 23, 0.08);
+      --success: #2b8f6d;
+      --danger: #ba4334;
+      --sidebar-bg: rgba(255, 252, 247, 0.58);
+      --shadow: 0 28px 80px rgba(92, 68, 47, 0.12);
+      --input-bg: rgba(255, 255, 255, 0.94);
+    }
+
+    body.theme-dynamic[data-dynamic-phase="sunset"] {
+      color-scheme: light;
+      --bg-main:
+        radial-gradient(circle at top left, rgba(255, 222, 170, 0.5), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(199, 92, 47, 0.18), transparent 32%),
+        linear-gradient(135deg, #f4dfcb 0%, #eac7aa 48%, #d5a382 100%);
+      --panel: rgba(255, 245, 236, 0.58);
+      --panel-strong: rgba(255, 249, 243, 0.84);
+      --line: rgba(67, 33, 20, 0.1);
+      --text-primary: #2d1f19;
+      --text-secondary: #7b6152;
+      --accent-color: #ca7823;
+      --accent-strong: #a95b19;
+      --card-stripe: #f2b56c;
+      --divider: rgba(67, 33, 20, 0.1);
+      --success: #2c8a66;
+      --danger: #b4473e;
+      --sidebar-bg: rgba(255, 244, 235, 0.58);
+      --shadow: 0 28px 80px rgba(108, 60, 34, 0.14);
+      --input-bg: rgba(255, 250, 245, 0.9);
+    }
+
+    body.theme-dynamic[data-dynamic-phase="night"] {
+      color-scheme: dark;
+      --bg-main:
+        radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(255, 209, 94, 0.1), transparent 30%),
+        linear-gradient(135deg, #0f0c0f 0%, #171216 45%, #22181b 100%);
+      --panel: rgba(33, 26, 23, 0.58);
+      --panel-strong: rgba(42, 34, 29, 0.88);
+      --line: rgba(255, 248, 242, 0.08);
+      --text-primary: #f3ecdf;
+      --text-secondary: #baa999;
+      --accent-color: #efc15a;
+      --accent-strong: #d39f2b;
+      --card-stripe: #ffd878;
+      --divider: rgba(255, 248, 242, 0.08);
+      --success: #5ac49b;
+      --danger: #ff8b7c;
+      --sidebar-bg: rgba(24, 18, 17, 0.66);
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+      --input-bg: rgba(48, 39, 35, 0.92);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Avenir Next", "Pretendard", "SF Pro Display", sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 228px 1fr;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .glass-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      backdrop-filter: var(--glass-blur);
+      box-shadow: var(--shadow);
+      border-radius: 28px;
+    }
+
+    .sidebar {
+      padding: 20px 16px;
+      background: var(--sidebar-bg);
+      border: 1px solid var(--line);
+      backdrop-filter: var(--glass-blur);
+      box-shadow: var(--shadow);
+      border-radius: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 6px 16px;
+    }
+
+    .sidebar-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      object-fit: cover;
+      box-shadow: 0 18px 42px rgba(94, 63, 17, 0.24);
+    }
+
+    .sidebar-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .sidebar-subtitle {
+      margin: 2px 0 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-cover {
+      position: relative;
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      background: rgba(255,255,255,0.12);
+      margin-bottom: 8px;
+    }
+
+    .sidebar-cover-image {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1.28 / 1;
+      object-fit: cover;
+    }
+
+    .sidebar-cover-copy {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(10, 8, 10, 0) 0%, rgba(10, 8, 10, 0.8) 78%);
+      color: #fff5e5;
+    }
+
+    .sidebar-cover-kicker {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(245, 210, 113, 0.16);
+      border: 1px solid rgba(245, 210, 113, 0.2);
+      color: #f9de96;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-cover-copy strong {
+      display: block;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .nav-item {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: transparent;
+      color: var(--text-secondary);
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+    }
+
+    .nav-item:hover {
+      transform: translateX(2px);
+      background: rgba(255,255,255,0.12);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(214,165,44,0.18), rgba(255,255,255,0.1));
+      color: var(--text-primary);
+      box-shadow: inset 0 0 0 1px rgba(214,165,44,0.14);
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .topbar {
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(26px, 3.2vw, 38px);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .topbar p {
+      margin: 8px 0 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(214,165,44,0.14);
+      color: var(--accent-color);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .dashboard-grid,
+    .files-grid-layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .section-card {
+      padding: 18px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-copy {
+      margin: 6px 0 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      padding: 14px 16px;
+      border-radius: 22px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-value {
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .stat-sub {
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .quote-card {
+      padding: 24px;
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(214,165,44,0.12), rgba(255,255,255,0.08));
+      border: 1px solid rgba(214,165,44,0.16);
+    }
+
+    .quote-card blockquote {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.6;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .quote-card cite {
+      display: block;
+      margin-top: 12px;
+      color: var(--text-secondary);
+      font-style: normal;
+      font-size: 14px;
+    }
+
+    .dashboard-side-card {
+      padding: 22px;
+      border-radius: 26px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--glass-blur);
+    }
+
+    .dashboard-side-title {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .dashboard-side-sub {
+      margin: 8px 0 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .donut-wrap {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .donut-svg {
+      width: 196px;
+      height: 196px;
+      overflow: visible;
+    }
+
+    .donut-track {
+      fill: none;
+      stroke: rgba(255,255,255,0.08);
+      stroke-width: 16;
+    }
+
+    .donut-progress {
+      fill: none;
+      stroke: url(#donutGrad);
+      stroke-width: 16;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 180ms ease;
+    }
+
+    .donut-value {
+      font-size: 20px;
+      font-weight: 800;
+      fill: var(--text-primary);
+    }
+
+    .donut-label {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      fill: var(--text-secondary);
+    }
+
+    .donut-summary {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .streak-head {
+      margin-top: 18px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .streak-fire {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .streak-count {
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+
+    .streak-count small {
+      font-size: 18px;
+      color: var(--text-secondary);
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .streak-month {
+      margin-top: 18px;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .streak-week {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(40px, 1fr));
+      gap: 6px;
+    }
+
+    .streak-day {
+      padding: 10px 2px 10px;
+      border-radius: 14px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.04);
+      min-width: 0;
+    }
+
+    .streak-day.is-today {
+      border-color: rgba(214,165,44,0.36);
+      background: rgba(214,165,44,0.12);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    .streak-day.has-fire .streak-date {
+      color: var(--accent-color);
+    }
+
+    .streak-weekday {
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .streak-date {
+      margin-top: 7px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .streak-mark {
+      margin-top: 7px;
+      min-height: 12px;
+      color: var(--accent-color);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .streak-mark-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent-color), var(--card-stripe));
+      box-shadow: 0 0 0 4px rgba(214,165,44,0.12);
+    }
+
+    .streak-day.is-today .streak-mark-dot {
+      box-shadow: 0 0 0 5px rgba(214,165,44,0.18);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent-color), var(--card-stripe));
+    }
+
+    .file-card, .task-card, .history-card {
+      padding: 18px;
+      border-radius: 22px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .file-card-header,
+    .task-card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .filename {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      word-break: break-word;
+    }
+
+    .meta {
+      margin: 6px 0 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .task-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--line);
+      cursor: pointer;
+      transition: background 130ms ease, transform 130ms ease, border-color 130ms ease;
+    }
+
+    .task-row:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(214,165,44,0.18);
+    }
+
+    #view-tasks .section-card {
+      min-height: calc(100vh - 148px);
+    }
+
+    #view-tasks .task-card {
+      padding: 22px;
+      border-radius: 24px;
+    }
+
+    #view-tasks .filename {
+      font-size: 20px;
+    }
+
+    #view-tasks .task-row {
+      padding: 14px 16px;
+      font-size: 15px;
+    }
+
+    #view-tasks #tasks-list {
+      gap: 16px;
+    }
+
+    body.view-tasks-active .topbar {
+      padding: 14px 18px;
+    }
+
+    body.view-tasks-active .topbar h1 {
+      font-size: clamp(22px, 2.8vw, 32px);
+    }
+
+    body.view-tasks-active .topbar p {
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .task-row.done span {
+      text-decoration: line-through;
+      opacity: 0.72;
+    }
+
+    .task-row input {
+      margin-top: 2px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-weight: 700;
+      transition: transform 130ms ease, opacity 130ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-color), var(--accent-strong));
+      color: white;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-primary);
+      border: 1px solid var(--line);
+    }
+
+    .btn-danger {
+      background: rgba(186,67,52,0.14);
+      color: var(--danger);
+      border: 1px solid rgba(186,67,52,0.16);
+    }
+
+    .tab-strip {
+      display: inline-flex;
+      gap: 8px;
+      padding: 6px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--line);
+    }
+
+    .subtab {
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    .subtab.active {
+      background: rgba(214,165,44,0.16);
+      color: var(--text-primary);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .input,
+    .textarea,
+    .select {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--input-bg);
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .time-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .time-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .time-chip {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .time-editor {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr 0.8fr auto;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .time-select {
+      width: 100%;
+      min-width: 0;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--input-bg);
+      color: var(--text-primary);
+      appearance: none;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .time-preview {
+      min-width: 92px;
+      padding: 12px 10px;
+      border-radius: 14px;
+      background: rgba(214,165,44,0.1);
+      color: var(--accent-color);
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .preset-chip {
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text-secondary);
+      border: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .preset-chip:hover {
+      color: var(--text-primary);
+      border-color: rgba(214,165,44,0.22);
+    }
+
+    .settings-help {
+      margin: 12px 0 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .settings-shell {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .settings-panel {
+      padding: 34px 38px;
+      border-radius: 30px;
+      background: rgba(34, 26, 12, 0.82);
+      border: 1px solid rgba(240, 195, 90, 0.18);
+      box-shadow: 0 32px 90px rgba(9, 7, 24, 0.34);
+      backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .settings-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: linear-gradient(180deg, #f0c35a, rgba(240, 195, 90, 0.15));
+      border-radius: 999px;
+    }
+
+    .settings-group {
+      margin-bottom: 28px;
+    }
+
+    .settings-group:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .settings-heading {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .settings-copy {
+      margin: 8px 0 0;
+      color: rgba(255, 244, 214, 0.62);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .settings-input,
+    .settings-theme-select {
+      width: min(360px, 100%);
+      margin-top: 18px;
+      padding: 16px 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(240, 195, 90, 0.14);
+      background: rgba(20, 15, 8, 0.8);
+      color: #fff7de;
+      outline: none;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .settings-theme-select {
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255, 244, 214, 0.6) 50%),
+        linear-gradient(135deg, rgba(255, 244, 214, 0.6) 50%, transparent 50%);
+      background-position:
+        calc(100% - 24px) calc(50% - 2px),
+        calc(100% - 18px) calc(50% - 2px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 42px;
+    }
+
+    .settings-time-list {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .settings-time-item {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-time-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-time-pill {
+      flex: 0 1 320px;
+      min-width: 0;
+      padding: 14px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(240, 195, 90, 0.12);
+      background: rgba(20, 15, 8, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff7de;
+    }
+
+    .settings-time-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,0.92);
+      color: rgba(255,255,255,0.92);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .settings-time-value {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+    }
+
+    .settings-ampm-badge {
+      margin-left: auto;
+      padding: 5px 11px;
+      border-radius: 10px;
+      background: rgba(240, 195, 90, 0.18);
+      color: #f0c35a;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .settings-ampm-badge.pm {
+      background: rgba(214, 165, 44, 0.2);
+      color: #ffd978;
+    }
+
+    .settings-icon-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 15px;
+      border: 1px solid rgba(240, 195, 90, 0.16);
+      background: rgba(20, 15, 8, 0.74);
+      color: rgba(255, 244, 214, 0.76);
+      font-size: 18px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .settings-add-btn {
+      margin-left: 6px;
+      width: 78px;
+      border-radius: 15px;
+      border: 1px solid #e0b443;
+      background: rgba(92, 66, 12, 0.4);
+      color: #f6e6b6;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .settings-time-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 150px));
+      gap: 10px;
+      padding-left: 4px;
+    }
+
+    .settings-time-select {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(240, 195, 90, 0.14);
+      background: rgba(28, 21, 10, 0.72);
+      color: #fff2c8;
+      appearance: none;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .settings-divider {
+      margin: 38px 0 20px;
+      border: 0;
+      border-top: 1px solid rgba(240, 195, 90, 0.12);
+    }
+
+    .settings-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .settings-save-btn {
+      min-width: 210px;
+      padding: 16px 24px;
+      border-radius: 17px;
+      background: linear-gradient(135deg, #fff1bf, #e0b443);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 10px 22px rgba(224, 180, 67, 0.32);
+    }
+
+    .settings-save-btn::before {
+      content: "\1F4BE";
+      margin-right: 10px;
+    }
+
+    .settings-status {
+      min-height: 22px;
+      color: rgba(255, 244, 214, 0.66);
+      font-size: 14px;
+    }
+
+    .files-shell {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .files-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .files-action-btn {
+      min-width: 180px;
+      padding: 15px 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(240, 195, 90, 0.24);
+      background: rgba(34, 26, 12, 0.76);
+      color: #f6e6b6;
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 10px 20px rgba(9, 7, 24, 0.22);
+    }
+
+    .files-action-btn.primary {
+      background: linear-gradient(135deg, #fff0b8, #d9ab36);
+      color: #fff;
+      box-shadow: 0 12px 26px rgba(217, 171, 54, 0.34);
+    }
+
+    .files-action-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .files-tab-bar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 8px;
+      border-radius: 22px;
+      background: rgba(34, 26, 12, 0.78);
+      border: 1px solid rgba(240, 195, 90, 0.14);
+      box-shadow: 0 20px 50px rgba(9, 7, 24, 0.24);
+      margin-bottom: 22px;
+    }
+
+    .files-tab-btn {
+      padding: 15px 18px;
+      border-radius: 16px;
+      background: transparent;
+      color: rgba(255, 244, 214, 0.6);
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .files-tab-btn.active {
+      background: linear-gradient(135deg, #fff0b8, #d9ab36);
+      color: #fff;
+    }
+
+    .files-stage-card {
+      padding: 34px 40px 38px;
+      border-radius: 30px;
+      background: rgba(34, 26, 12, 0.82);
+      border: 1px solid rgba(240, 195, 90, 0.18);
+      box-shadow: 0 32px 90px rgba(9, 7, 24, 0.34);
+      backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .files-stage-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: linear-gradient(180deg, #f0c35a, rgba(240, 195, 90, 0.15));
+      border-radius: 999px;
+    }
+
+    .files-panel-title {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff7de;
+    }
+
+    .files-panel-copy {
+      margin: 10px 0 0;
+      color: rgba(255, 244, 214, 0.58);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .files-composer {
+      margin-top: 24px;
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(240, 195, 90, 0.14);
+      background: rgba(20, 15, 8, 0.72);
+    }
+
+    .files-composer-grid {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 12px;
+    }
+
+    .files-dropzone {
+      margin-top: 28px;
+      padding: 38px 28px;
+      border-radius: 22px;
+      border: 1px dashed rgba(240, 195, 90, 0.22);
+      background: rgba(190, 183, 214, 0.34);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 140ms ease, transform 140ms ease, background 140ms ease;
+    }
+
+    .files-dropzone:hover,
+    .files-dropzone.dragover {
+      transform: translateY(-1px);
+      border-color: rgba(240, 195, 90, 0.44);
+      background: rgba(190, 183, 214, 0.42);
+    }
+
+    .files-dropzone-icon {
+      font-size: 34px;
+      color: #f0c35a;
+    }
+
+    .files-dropzone-title {
+      margin-top: 10px;
+      color: #fff7de;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .files-dropzone-copy {
+      margin-top: 6px;
+      color: rgba(255, 244, 214, 0.6);
+      font-size: 15px;
+    }
+
+    .files-list-wrap {
+      margin-top: 28px;
+      min-height: 220px;
+    }
+
+    .files-empty {
+      padding: 42px 16px 10px;
+      text-align: center;
+      color: rgba(255, 244, 214, 0.5);
+      font-size: 17px;
+      font-style: italic;
+    }
+
+    .files-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .files-file-card {
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(240, 195, 90, 0.12);
+      background: rgba(20, 15, 8, 0.72);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .files-file-name {
+      margin: 0;
+      color: #fff7de;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      word-break: break-word;
+    }
+
+    .files-file-meta {
+      margin: 8px 0 0;
+      color: rgba(255, 244, 214, 0.55);
+      font-size: 12px;
+      line-height: 1.6;
+      word-break: break-all;
+    }
+
+    .files-remove-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      border: 1px solid rgba(240, 195, 90, 0.14);
+      background: rgba(49, 34, 10, 0.84);
+      color: rgba(255, 244, 214, 0.72);
+      font-size: 16px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .files-history-group {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(240, 195, 90, 0.12);
+      background: rgba(20, 15, 8, 0.72);
+    }
+
+    .files-history-title {
+      margin: 0 0 14px;
+      color: #fff7de;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      background: rgba(223,109,59,0.14);
+      color: var(--accent-color);
+    }
+
+    .status {
+      min-height: 22px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .status.ok {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .empty-state {
+      padding: 28px 20px;
+      border-radius: 22px;
+      border: 1px dashed var(--line);
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    .mono {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    }
+
+    .mini-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .help-text {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1080px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        padding: 16px;
+      }
+
+      .nav-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .dashboard-grid,
+      .files-grid-layout,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .time-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .time-editor {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .settings-panel {
+        padding: 26px 20px;
+      }
+
+      .settings-time-row {
+        flex-wrap: wrap;
+      }
+
+      .settings-time-pill {
+        flex-basis: 100%;
+      }
+
+      .settings-add-btn {
+        margin-left: 0;
+      }
+
+      .settings-time-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-footer {
+        justify-content: stretch;
+      }
+
+      .settings-save-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img class="sidebar-logo" src="../morning_star_app_icon.png" alt="Morning Star icon" />
+        <div>
+          <h1 class="sidebar-title">Morning Star</h1>
+          <p class="sidebar-subtitle">macOS app fallback</p>
+        </div>
+      </div>
+
+      <div class="sidebar-cover">
+        <img class="sidebar-cover-image" src="../morning_star_cover.png" alt="Morning Star cover art" />
+        <div class="sidebar-cover-copy">
+          <span class="sidebar-cover-kicker">Mac Edition</span>
+          <strong>Plan in the evening. Launch with clarity in the morning.</strong>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item" data-view="dashboard">
+          <span class="nav-icon">◫</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item active" data-view="tasks">
+          <span class="nav-icon">✓</span><span>Tasks</span>
+        </button>
+        <button class="nav-item" data-view="files">
+          <span class="nav-icon">▤</span><span>Files</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <span class="nav-icon">⚙</span><span>Settings</span>
+        </button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section class="topbar glass-card">
+        <div>
+          <h1 id="greeting">Good Morning!</h1>
+          <p>Here is what you have planned for today.</p>
+        </div>
+        <div class="pill" id="top-pill">macOS original-style view</div>
+      </section>
+
+      <section class="view" id="view-dashboard">
+        <div class="dashboard-grid">
+          <div class="stack">
+            <div class="section-card glass-card">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">Daily Overview</h2>
+                  <p class="section-copy">A quick snapshot of today's completion progress.</p>
+                </div>
+              </div>
+              <div class="stats-grid" id="stats-grid"></div>
+            </div>
+
+            <div class="section-card glass-card">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">Today's Task Files</h2>
+                  <p class="section-copy">The same structure as the original dashboard, optimized for macOS fallback mode.</p>
+                </div>
+              </div>
+              <div class="mini-list" id="dashboard-files"></div>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="dashboard-side-card" id="progress-card"></div>
+
+            <div class="dashboard-side-card" id="streak-card"></div>
+
+            <div class="quote-card">
+              <h3 class="dashboard-side-title">Daily Inspiration</h3>
+              <blockquote id="quote-text"></blockquote>
+              <cite id="quote-author"></cite>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view active" id="view-tasks">
+        <div class="section-card glass-card">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Tasks</h2>
+              <p class="section-copy">Toggle checklist items just like the existing app.</p>
+            </div>
+            <button class="btn btn-secondary" id="refresh-tasks">Refresh</button>
+          </div>
+          <div class="mini-list" id="tasks-list"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-files">
+        <div class="files-shell">
+          <div class="files-toolbar">
+            <button class="files-action-btn" id="toggle-file-composer">Write Task</button>
+            <button class="files-action-btn primary" id="trigger-file-dialog">Add .md File</button>
+          </div>
+
+          <div class="files-tab-bar">
+            <button class="files-tab-btn active" data-files-tab="today">Today</button>
+            <button class="files-tab-btn" data-files-tab="tomorrow">Tomorrow</button>
+            <button class="files-tab-btn" data-files-tab="yesterday">Yesterday</button>
+          </div>
+
+          <div class="files-stage-card">
+            <h2 class="files-panel-title" id="files-panel-title">Tasks for Today</h2>
+            <p class="files-panel-copy" id="files-panel-copy">Current active tasks. You can also add extra files directly to today.</p>
+
+            <div id="files-composer-slot"></div>
+            <div id="files-dropzone-slot"></div>
+
+            <div class="files-list-wrap" id="files-list"></div>
+            <div class="status" id="files-status"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <div class="settings-shell">
+          <div class="settings-panel">
+            <section class="settings-group">
+              <h2 class="settings-heading">Profile</h2>
+              <p class="settings-copy">What should we call you in the morning?</p>
+              <input class="settings-input" id="settings-nickname" type="text" />
+            </section>
+
+            <section class="settings-group">
+              <h2 class="settings-heading">Target Times</h2>
+              <p class="settings-copy">App will display tasks automatically after these times. Click the time row and adjust hour, minute, and AM/PM below it.</p>
+              <div class="settings-time-list" id="time-list"></div>
+            </section>
+
+            <section class="settings-group">
+              <h2 class="settings-heading">Appearance</h2>
+              <p class="settings-copy">Choose Light, Dark, or a Time Adaptive theme that brightens and dims with the day.</p>
+              <select class="settings-theme-select" id="settings-theme">
+                <option value="light">Light Mode</option>
+                <option value="dark">Dark Mode</option>
+                <option value="dynamic">Time Adaptive</option>
+              </select>
+            </section>
+
+            <hr class="settings-divider" />
+            <div class="settings-footer">
+              <div class="settings-status" id="settings-status"></div>
+              <button class="settings-save-btn" id="save-settings">Save Settings</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const quotes = [
+      { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+      { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+      { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+      { text: "Push yourself, because no one else is going to do it for you.", author: "Unknown" },
+      { text: "Great things never come from comfort zones.", author: "Unknown" },
+      { text: "Dream it. Wish it. Do it.", author: "Unknown" },
+      { text: "Success doesn't just find you. You have to go out and get it.", author: "Unknown" },
+    ];
+
+    const state = {
+      activeView: "tasks",
+      activeFilesTab: "today",
+      isFilesComposerOpen: false,
+      config: null,
+      filesData: { today: [], tomorrow: [], yesterday: {} },
+    };
+
+    function api() {
+      return window.pywebview?.api;
+    }
+
+    function $id(id) {
+      return document.getElementById(id);
+    }
+
+    function getHourLogo() {
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 12) return "🌅";
+      if (hour >= 12 && hour < 17) return "☀️";
+      if (hour >= 17 && hour < 21) return "🌇";
+      return "🌙";
+    }
+
+    function getGreeting(name) {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) return `Good Morning, ${name}!`;
+      if (hour >= 12 && hour < 17) return `Good Afternoon, ${name}!`;
+      if (hour >= 17 && hour < 21) return `Good Evening, ${name}!`;
+      return `Good Night, ${name}!`;
+    }
+
+    function parseChecklist(content) {
+      const items = [];
+      const lines = (content || "").split("\n");
+      let checked = 0;
+
+      lines.forEach((line, index) => {
+        const done = line.match(/^(\s*)-\s*\[[xX]\]\s*(.*)/);
+        const todo = line.match(/^(\s*)-\s*\[\s\]\s*(.*)/);
+        if (done) {
+          items.push({ lineIndex: index, text: done[2], checked: true });
+          checked += 1;
+        } else if (todo) {
+          items.push({ lineIndex: index, text: todo[2], checked: false });
+        }
+      });
+
+      return { items, checked, total: items.length };
+    }
+
+    function toggleLine(content, lineIndex, currentChecked) {
+      const lines = (content || "").split("\n");
+      let line = lines[lineIndex] || "";
+      if (currentChecked) {
+        line = line.replace(/^(\s*)-\s*\[[xX]\]/, "$1- [ ]");
+      } else {
+        line = line.replace(/^(\s*)-\s*\[\s\]/, "$1- [x]");
+      }
+      lines[lineIndex] = line;
+      return lines.join("\n");
+    }
+
+    function setStatus(id, message, kind) {
+      const el = $id(id);
+      el.textContent = message || "";
+      el.className = `status ${kind || ""}`.trim();
+    }
+
+    function getDynamicThemePhase(date = new Date()) {
+      const hour = date.getHours();
+      if (hour >= 5 && hour < 10) return "morning";
+      if (hour >= 10 && hour < 17) return "day";
+      if (hour >= 17 && hour < 20) return "sunset";
+      return "night";
+    }
+
+    function applyTheme(theme) {
+      const phase = getDynamicThemePhase();
+      const useDarkChrome = theme === "dark" || (theme === "dynamic" && phase === "night");
+
+      document.body.classList.toggle("theme-dark", useDarkChrome);
+      document.body.classList.toggle("theme-dynamic", theme === "dynamic");
+
+      if (theme === "dynamic") {
+        document.body.dataset.dynamicPhase = phase;
+      } else {
+        delete document.body.dataset.dynamicPhase;
+      }
+    }
+
+    function readStoredJson(key, fallback) {
+      try {
+        return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+      } catch (_error) {
+        return fallback;
+      }
+    }
+
+    function formatDateKey(date) {
+      return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+    }
+
+    function updateFireDays(todayFiles) {
+      const today = new Date().toISOString().split("T")[0];
+      const done = todayFiles.length > 0 && todayFiles.every((file) => {
+        const stats = parseChecklist(file.content);
+        return stats.total > 0 && stats.checked === stats.total;
+      });
+
+      const fireDays = readStoredJson("ms_fire_days", {});
+      if (done) {
+        fireDays[today] = true;
+      } else {
+        delete fireDays[today];
+      }
+
+      try {
+        localStorage.setItem("ms_fire_days", JSON.stringify(fireDays));
+      } catch (_error) {}
+
+      let count = 0;
+      const cursor = new Date();
+      while (true) {
+        const key = formatDateKey(cursor);
+        if (!fireDays[key]) {
+          break;
+        }
+        count += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      return { count, fireDays, doneToday: done };
+    }
+
+    function getWeekDates() {
+      const today = new Date();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + index);
+        return date;
+      });
+    }
+
+    function renderDonut(percent, doneTasks, totalTasks) {
+      const size = 196;
+      const stroke = 16;
+      const radius = (size - stroke) / 2;
+      const circumference = 2 * Math.PI * radius;
+      const offset = circumference - (percent / 100) * circumference;
+
+      return `
+        <div>
+          <h3 class="dashboard-side-title">Today's Progress</h3>
+          <div class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 ${size} ${size}" aria-label="Today's completion">
+              <defs>
+                <linearGradient id="donutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="var(--accent-color)"></stop>
+                  <stop offset="100%" stop-color="var(--card-stripe)"></stop>
+                </linearGradient>
+              </defs>
+              <circle class="donut-track" cx="${size / 2}" cy="${size / 2}" r="${radius}"></circle>
+              <circle
+                class="donut-progress"
+                cx="${size / 2}"
+                cy="${size / 2}"
+                r="${radius}"
+                stroke-dasharray="${circumference}"
+                stroke-dashoffset="${offset}"
+                transform="rotate(-90 ${size / 2} ${size / 2})"
+              ></circle>
+              <text x="50%" y="48%" text-anchor="middle" dominant-baseline="middle" class="donut-value">${percent}%</text>
+              <text x="50%" y="61%" text-anchor="middle" dominant-baseline="middle" class="donut-label">done</text>
+            </svg>
+            <div class="donut-summary">${doneTasks} of ${totalTasks} tasks done</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStreakCard(streakInfo) {
+      const todayKey = formatDateKey(new Date());
+      const monthLabel = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      const week = getWeekDates();
+
+      return `
+        <div>
+          <h3 class="dashboard-side-title">Streak</h3>
+          <div class="streak-head">
+            <div class="streak-fire">🔥</div>
+            <div class="streak-count">${streakInfo.count}<small>day</small></div>
+          </div>
+          <div class="streak-month">${monthLabel}</div>
+          <div class="streak-week">
+            ${week.map((date) => {
+              const key = formatDateKey(date);
+              const weekday = date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+              const isToday = key === todayKey;
+              const hasFire = !!streakInfo.fireDays[key];
+              return `
+                <div class="streak-day ${isToday ? "is-today" : ""} ${hasFire ? "has-fire" : ""}">
+                  <div class="streak-weekday">${weekday}</div>
+                  <div class="streak-date">${date.getDate()}</div>
+                  <div class="streak-mark">${hasFire ? '<span class="streak-mark-dot"></span>' : "&nbsp;"}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function updateChrome() {
+      const name = state.config?.nickname || "Alex";
+      $id("greeting").textContent = getGreeting(name);
+      const times = state.config?.target_times?.length ? state.config.target_times.join(", ") : "No target time";
+      $id("top-pill").textContent = `Wake times: ${times}`;
+    }
+
+    function renderStats() {
+      const todayFiles = state.filesData.today || [];
+      let totalTasks = 0;
+      let doneTasks = 0;
+
+      todayFiles.forEach((file) => {
+        const stats = parseChecklist(file.content);
+        totalTasks += stats.total;
+        doneTasks += stats.checked;
+      });
+
+      const percent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+      const streakInfo = updateFireDays(todayFiles);
+
+      $id("stats-grid").innerHTML = [
+        { label: "Today files", value: todayFiles.length, sub: "Files scheduled for today" },
+        { label: "Completion", value: `${percent}%`, sub: `${doneTasks}/${totalTasks} checklist items done` },
+        { label: "Streak", value: streakInfo.count, sub: "Days fully completed" },
+      ].map((item) => `
+        <article class="stat-card">
+          <div class="stat-label">${item.label}</div>
+          <div class="stat-value">${item.value}</div>
+          <div class="stat-sub">${item.sub}</div>
+        </article>
+      `).join("");
+
+      $id("progress-card").innerHTML = renderDonut(percent, doneTasks, totalTasks);
+      $id("streak-card").innerHTML = renderStreakCard(streakInfo);
+    }
+
+    function renderQuote() {
+      const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+      const quote = quotes[dayOfYear % quotes.length];
+      $id("quote-text").textContent = `"${quote.text}"`;
+      $id("quote-author").textContent = `- ${quote.author}`;
+    }
+
+    function renderDashboardFiles() {
+      const container = $id("dashboard-files");
+      const files = state.filesData.today || [];
+
+      if (!files.length) {
+        container.innerHTML = `<div class="empty-state">No files scheduled for today yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = files.map((file) => {
+        const stats = parseChecklist(file.content);
+        const percent = stats.total > 0 ? Math.round((stats.checked / stats.total) * 100) : 0;
+        const preview = stats.items.slice(0, 4).map((item) => `
+          <li class="task-row ${item.checked ? "done" : ""}">
+            <input type="checkbox" disabled ${item.checked ? "checked" : ""} />
+            <span>${escapeHtml(item.text)}</span>
+          </li>
+        `).join("");
+
+        return `
+          <article class="file-card">
+            <div class="file-card-header">
+              <div>
+                <h3 class="filename">${escapeHtml(file.filename)}</h3>
+                <p class="meta">${escapeHtml(file.added_date || "")}</p>
+              </div>
+              <strong>${stats.checked}/${stats.total}</strong>
+            </div>
+            <div class="progress-track"><div class="progress-bar" style="width:${percent}%"></div></div>
+            <ul class="task-list">${preview || `<li class="empty-state">No checklist rows in this file.</li>`}</ul>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderTasks() {
+      const container = $id("tasks-list");
+      const files = state.filesData.today || [];
+
+      if (!files.length) {
+        container.innerHTML = `<div class="empty-state">All caught up. There are no tasks pending for today.</div>`;
+        return;
+      }
+
+      container.innerHTML = files.map((file, fileIndex) => {
+        const stats = parseChecklist(file.content);
+        const body = stats.items.length
+          ? `<ul class="task-list">
+              ${stats.items.map((item) => `
+                <li class="task-row ${item.checked ? "done" : ""}" data-task-row="true" data-file-index="${fileIndex}" data-line-index="${item.lineIndex}">
+                  <input type="checkbox" data-action="toggle-task" data-file-index="${fileIndex}" data-line-index="${item.lineIndex}" ${item.checked ? "checked" : ""} />
+                  <span>${escapeHtml(item.text)}</span>
+                </li>
+              `).join("")}
+            </ul>`
+          : `<div class="empty-state mono">${escapeHtml(file.content || "(empty file)")}</div>`;
+
+        return `
+          <article class="task-card">
+            <div class="task-card-header">
+              <div>
+                <h3 class="filename">${escapeHtml(file.filename)}</h3>
+                <p class="meta">${escapeHtml(file.path)}</p>
+              </div>
+              <span class="badge">${stats.checked}/${stats.total}</span>
+            </div>
+            ${body}
+          </article>
+        `;
+      }).join("");
+    }
+
+    function fileListForCurrentTab() {
+      if (state.activeFilesTab === "yesterday") {
+        const entries = Object.entries(state.filesData.yesterday || {}).sort((a, b) => b[0].localeCompare(a[0]));
+        return entries;
+      }
+      return state.filesData[state.activeFilesTab] || [];
+    }
+
+    function getFilesMeta() {
+      if (state.activeFilesTab === "tomorrow") {
+        return {
+          title: "Tasks for Tomorrow",
+          copy: "Files added here will automatically move to 'Today' on the next calendar day.",
+          empty: "No files.",
+          dropTitle: "Drag and drop .md files here",
+          dropCopy: "Or click to add via file picker",
+        };
+      }
+      if (state.activeFilesTab === "yesterday") {
+        return {
+          title: "Task History",
+          copy: "Past tasks are grouped by date so you can review previous plans.",
+          empty: "No history yet.",
+          dropTitle: "",
+          dropCopy: "",
+        };
+      }
+      return {
+        title: "Tasks for Today",
+        copy: "Current active tasks. You can also add extra files directly to today.",
+        empty: "No files.",
+        dropTitle: "Drag and drop .md files here",
+        dropCopy: "Or click to add a file directly to Today",
+      };
+    }
+
+    function renderFilesComposer() {
+      const slot = $id("files-composer-slot");
+      if (!state.isFilesComposerOpen || state.activeFilesTab === "yesterday") {
+        slot.innerHTML = "";
+        return;
+      }
+
+      slot.innerHTML = `
+        <div class="files-composer">
+          <div class="files-composer-grid">
+            <input class="input" id="composer-name" type="text" value="new-task.md" placeholder="Filename" />
+            <select class="select" id="composer-target">
+              <option value="today" ${state.activeFilesTab === "today" ? "selected" : ""}>Today</option>
+              <option value="tomorrow" ${state.activeFilesTab === "tomorrow" ? "selected" : ""}>Tomorrow</option>
+            </select>
+          </div>
+          <div class="field" style="margin-top: 12px;">
+            <textarea class="textarea" id="composer-content"># Morning plan
+
+- [ ] Water and stretch
+- [ ] Pick the top 3 priorities
+- [ ] Start the first important task</textarea>
+          </div>
+          <div class="button-row">
+            <button class="btn btn-primary" id="composer-save">Save Task</button>
+          </div>
+        </div>
+      `;
+      $id("composer-save").addEventListener("click", saveComposer);
+    }
+
+    function renderFilesDropzone(meta) {
+      const slot = $id("files-dropzone-slot");
+      if (state.activeFilesTab === "yesterday") {
+        slot.innerHTML = "";
+        return;
+      }
+      slot.innerHTML = `
+        <div class="files-dropzone" id="files-dropzone">
+          <div class="files-dropzone-icon">📄</div>
+          <div class="files-dropzone-title">${meta.dropTitle}</div>
+          <div class="files-dropzone-copy">${meta.dropCopy}</div>
+        </div>
+      `;
+    }
+
+    function renderFiles() {
+      const container = $id("files-list");
+      const meta = getFilesMeta();
+      $id("files-panel-title").textContent = meta.title;
+      $id("files-panel-copy").textContent = meta.copy;
+
+      document.querySelectorAll(".files-tab-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.filesTab === state.activeFilesTab);
+      });
+
+      const writeButton = $id("toggle-file-composer");
+      const addButton = $id("trigger-file-dialog");
+      const allowCreate = state.activeFilesTab !== "yesterday";
+      writeButton.disabled = !allowCreate;
+      addButton.disabled = !allowCreate;
+      writeButton.textContent = state.isFilesComposerOpen && allowCreate ? "Close Writer" : "Write Task";
+
+      renderFilesComposer();
+      renderFilesDropzone(meta);
+
+      if (state.activeFilesTab === "yesterday") {
+        const groups = fileListForCurrentTab();
+        if (!groups.length) {
+          container.innerHTML = `<div class="files-empty">${meta.empty}</div>`;
+          return;
+        }
+
+        container.innerHTML = groups.map(([dateKey, files]) => `
+          <section class="files-history-group">
+            <h3 class="files-history-title">${escapeHtml(dateKey)} <span class="files-file-meta">(${files.length} files)</span></h3>
+            <div class="files-grid">
+                ${files.map((file) => `
+                  <article class="files-file-card">
+                    <div>
+                      <h4 class="files-file-name">${escapeHtml(file.filename)}</h4>
+                      <p class="files-file-meta">${escapeHtml(file.path)}</p>
+                    </div>
+                    <button class="files-remove-btn" data-action="remove-file" data-target="yesterday" data-date-key="${escapeHtmlAttr(dateKey)}" data-path="${escapeHtmlAttr(file.path)}">🗑</button>
+                  </article>
+                `).join("")}
+            </div>
+          </section>
+        `).join("");
+        return;
+      }
+
+      const files = fileListForCurrentTab();
+      if (!files.length) {
+        container.innerHTML = `<div class="files-empty">${meta.empty}</div>`;
+        return;
+      }
+
+      container.innerHTML = `<div class="files-grid">
+        ${files.map((file) => `
+          <article class="files-file-card">
+            <div>
+              <h3 class="files-file-name">${escapeHtml(file.filename)}</h3>
+              <p class="files-file-meta">${escapeHtml(file.added_date || "")}</p>
+              <p class="files-file-meta">${escapeHtml(file.path)}</p>
+            </div>
+            <button class="files-remove-btn" data-action="remove-file" data-target="${state.activeFilesTab}" data-path="${escapeHtmlAttr(file.path)}">🗑</button>
+          </article>
+        `).join("")}
+      </div>`;
+    }
+
+    async function handleFilesDrop(files) {
+      if (state.activeFilesTab === "yesterday") return;
+      const markdownFiles = [];
+      for (const file of Array.from(files || [])) {
+        if (!file.name.toLowerCase().endsWith(".md")) continue;
+        const content = await file.text();
+        markdownFiles.push({ name: file.name, content });
+      }
+      if (!markdownFiles.length) {
+        setStatus("files-status", "Only .md files can be imported here.", "error");
+        return;
+      }
+      await api().process_dropped_content(state.activeFilesTab, markdownFiles);
+      setStatus("files-status", "Markdown files added.", "ok");
+      await loadAll();
+    }
+
+    function renderSettings() {
+      const config = state.config || {};
+      $id("settings-nickname").value = config.nickname || "";
+      $id("settings-theme").value = config.theme || "light";
+      const times = config.target_times?.length ? config.target_times : ["06:00"];
+      $id("time-list").innerHTML = times.map((time, index) => {
+        const [hourString, minuteString] = time.split(":");
+        const hour = Number(hourString);
+        const ampm = hour >= 12 ? "PM" : "AM";
+        const hour12 = hour % 12 || 12;
+        const minute = minuteString || "00";
+        return `
+          <div class="settings-time-item">
+            <div class="settings-time-row">
+              <div class="settings-time-pill">
+                <div class="settings-time-icon">◷</div>
+                <div class="settings-time-value">${String(hour12).padStart(2, "0")}:${minute}</div>
+                <div class="settings-ampm-badge ${ampm === "PM" ? "pm" : ""}">${ampm}</div>
+              </div>
+              <button class="settings-icon-btn" data-action="remove-time" data-time-index="${index}" title="Remove time">🗑</button>
+              ${index === times.length - 1 ? '<button class="settings-add-btn" data-action="add-time" title="Add time">+</button>' : ""}
+            </div>
+            <div class="settings-time-controls">
+                <select class="settings-time-select" data-time-hour="${index}">
+                  ${Array.from({ length: 12 }, (_, value) => value + 1).map((value) => `
+                    <option value="${value}" ${value === hour12 ? "selected" : ""}>${String(value).padStart(2, "0")} hr</option>
+                  `).join("")}
+                </select>
+                <select class="settings-time-select" data-time-minute="${index}">
+                  ${Array.from({ length: 12 }, (_, value) => String(value * 5).padStart(2, "0")).map((value) => `
+                    <option value="${value}" ${value === minute ? "selected" : ""}>${value} min</option>
+                  `).join("")}
+                </select>
+                <select class="settings-time-select" data-time-ampm="${index}">
+                  <option value="AM" ${ampm === "AM" ? "selected" : ""}>AM</option>
+                  <option value="PM" ${ampm === "PM" ? "selected" : ""}>PM</option>
+                </select>
+            </div>
+            <div class="settings-help" data-time-preview="${index}">Selected time: ${String(hour12).padStart(2, "0")}:${minute} ${ampm}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderAll() {
+      updateChrome();
+      renderStats();
+      renderQuote();
+      renderDashboardFiles();
+      renderTasks();
+      renderFiles();
+      renderSettings();
+      applyTheme(state.config?.theme || "light");
+    }
+
+    async function loadAll() {
+      state.config = await api().get_config();
+      state.filesData = await api().read_all_files();
+      renderAll();
+    }
+
+    async function toggleTask(fileIndex, lineIndex) {
+      const file = state.filesData.today[fileIndex];
+      if (!file) return;
+
+      const stats = parseChecklist(file.content);
+      const item = stats.items.find((entry) => entry.lineIndex === lineIndex);
+      if (!item) return;
+
+      const nextContent = toggleLine(file.content, lineIndex, item.checked);
+      const result = await api().update_file_content(file.path, nextContent);
+      if (result?.success) {
+        await loadAll();
+      } else {
+        setStatus("files-status", result?.error || "Failed to update task.", "error");
+      }
+    }
+
+    async function removeFile(target, path, dateKey) {
+      const result = await api().remove_file(target, path, dateKey || null);
+      if (result) {
+        state.filesData = result;
+        renderFiles();
+        renderDashboardFiles();
+        renderTasks();
+        renderStats();
+      }
+    }
+
+    async function saveComposer() {
+      const name = $id("composer-name")?.value.trim() || "new-task.md";
+      const content = $id("composer-content")?.value.trim() || "";
+      const target = $id("composer-target")?.value || state.activeFilesTab;
+
+      if (!content) {
+        setStatus("files-status", "Please write some markdown content first.", "error");
+        return;
+      }
+
+      const filename = name.toLowerCase().endsWith(".md") ? name : `${name}.md`;
+      await api().process_dropped_content(target, [{ name: filename, content }]);
+      setStatus("files-status", "Task file saved.", "ok");
+      await loadAll();
+    }
+
+    async function openDialog() {
+      if (state.activeFilesTab === "yesterday") return;
+      await api().add_file_dialog(state.activeFilesTab);
+      setStatus("files-status", "File imported.", "ok");
+      await loadAll();
+    }
+
+    function buildTime24(hour12Value, minuteValue, ampmValue) {
+      let hour = Number(hour12Value);
+      if (ampmValue === "PM" && hour !== 12) hour += 12;
+      if (ampmValue === "AM" && hour === 12) hour = 0;
+      return `${String(hour).padStart(2, "0")}:${minuteValue}`;
+    }
+
+    function collectTimes() {
+      return Array.from(document.querySelectorAll(".time-row")).map((_, index) => {
+        const hour = document.querySelector(`[data-time-hour="${index}"]`)?.value;
+        const minute = document.querySelector(`[data-time-minute="${index}"]`)?.value;
+        const ampm = document.querySelector(`[data-time-ampm="${index}"]`)?.value;
+        if (!hour || !minute || !ampm) return null;
+        return buildTime24(hour, minute, ampm);
+      }).filter(Boolean);
+    }
+
+    function syncDraftTimesToState() {
+      const times = collectTimes();
+      state.config = {
+        ...state.config,
+        target_times: times.length ? times : ["06:00"],
+      };
+    }
+
+    function syncSettingsDraftToState() {
+      syncDraftTimesToState();
+      state.config = {
+        ...state.config,
+        nickname: $id("settings-nickname")?.value ?? state.config?.nickname ?? "",
+        theme: $id("settings-theme")?.value ?? state.config?.theme ?? "light",
+      };
+    }
+
+    function updateTimePreview(index) {
+      const hour = document.querySelector(`[data-time-hour="${index}"]`)?.value;
+      const minute = document.querySelector(`[data-time-minute="${index}"]`)?.value;
+      const ampm = document.querySelector(`[data-time-ampm="${index}"]`)?.value;
+      const preview = document.querySelector(`[data-time-preview="${index}"]`);
+      const value = document.querySelectorAll(".settings-time-value")[index];
+      const badge = document.querySelectorAll(".settings-ampm-badge")[index];
+      if (hour && minute && ampm && preview) {
+        preview.textContent = `Selected time: ${String(hour).padStart(2, "0")}:${minute} ${ampm}`;
+      }
+      if (hour && minute && value) {
+        value.textContent = `${String(hour).padStart(2, "0")}:${minute}`;
+      }
+      if (ampm && badge) {
+        badge.textContent = ampm;
+        badge.classList.toggle("pm", ampm === "PM");
+      }
+    }
+
+    async function saveSettings() {
+      const nextConfig = {
+        nickname: $id("settings-nickname").value.trim(),
+        theme: $id("settings-theme").value,
+        target_times: collectTimes().length ? collectTimes() : ["06:00"],
+      };
+
+      const result = await api().save_config(nextConfig);
+      if (result?.success) {
+        state.config = { ...state.config, ...nextConfig };
+        applyTheme(nextConfig.theme);
+        updateChrome();
+        renderSettings();
+        setStatus("settings-status", "Settings saved.", "ok");
+      } else {
+        setStatus("settings-status", "Failed to save settings.", "error");
+      }
+    }
+
+    function addTime() {
+      syncSettingsDraftToState();
+      const times = state.config?.target_times?.length ? [...state.config.target_times] : ["06:00"];
+      times.push("07:00");
+      state.config = { ...state.config, target_times: times };
+      renderSettings();
+    }
+
+    function removeTime(index) {
+      syncSettingsDraftToState();
+      const times = state.config?.target_times?.length ? [...state.config.target_times] : ["06:00"];
+      times.splice(index, 1);
+      state.config = { ...state.config, target_times: times.length ? times : ["06:00"] };
+      renderSettings();
+    }
+
+    function addPresetTime(time) {
+      syncSettingsDraftToState();
+      const times = state.config?.target_times?.length ? [...state.config.target_times] : [];
+      if (!times.includes(time)) {
+        times.push(time);
+      }
+      state.config = { ...state.config, target_times: times.length ? times : ["06:00"] };
+      renderSettings();
+    }
+
+    function setActiveView(view) {
+      state.activeView = view;
+      document.body.classList.toggle("view-tasks-active", view === "tasks");
+      document.querySelectorAll(".nav-item").forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === view);
+      });
+      document.querySelectorAll(".view").forEach((panel) => {
+        panel.classList.toggle("active", panel.id === `view-${view}`);
+      });
+    }
+
+    function setFilesTab(tab) {
+      state.activeFilesTab = tab;
+      if (tab === "yesterday") {
+        state.isFilesComposerOpen = false;
+      }
+      document.querySelectorAll(".files-tab-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.filesTab === tab);
+      });
+      renderFiles();
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function escapeHtmlAttr(value) {
+      return escapeHtml(value);
+    }
+
+    document.addEventListener("click", async (event) => {
+      const navButton = event.target.closest("[data-view]");
+      if (navButton) {
+        setActiveView(navButton.dataset.view);
+        return;
+      }
+
+      const subtabButton = event.target.closest("[data-files-tab]");
+      if (subtabButton) {
+        setFilesTab(subtabButton.dataset.filesTab);
+        return;
+      }
+
+      const taskRow = event.target.closest("[data-task-row='true']");
+      if (taskRow && !event.target.closest("input[type='checkbox']")) {
+        await toggleTask(Number(taskRow.dataset.fileIndex), Number(taskRow.dataset.lineIndex));
+        return;
+      }
+
+      const actionButton = event.target.closest("[data-action]");
+      if (actionButton) {
+        const action = actionButton.dataset.action;
+        if (action === "remove-file") {
+          await removeFile(actionButton.dataset.target, actionButton.dataset.path, actionButton.dataset.dateKey);
+        } else if (action === "remove-time") {
+          removeTime(Number(actionButton.dataset.timeIndex));
+        } else if (action === "add-time") {
+          addTime();
+        } else if (action === "preset-time") {
+          addPresetTime(actionButton.dataset.presetTime);
+        }
+      }
+    });
+
+    document.addEventListener("change", async (event) => {
+      const checkbox = event.target.closest("[data-action='toggle-task']");
+      if (checkbox) {
+        await toggleTask(Number(checkbox.dataset.fileIndex), Number(checkbox.dataset.lineIndex));
+        return;
+      }
+
+      const timeControl = event.target.closest("[data-time-hour], [data-time-minute], [data-time-ampm]");
+      if (timeControl) {
+        const index = Number(
+          timeControl.dataset.timeHour ??
+          timeControl.dataset.timeMinute ??
+          timeControl.dataset.timeAmpm
+        );
+        updateTimePreview(index);
+        return;
+      }
+
+      if (event.target.id === "settings-theme") {
+        state.config = { ...state.config, theme: event.target.value };
+        applyTheme(event.target.value);
+      }
+    });
+
+    window.setInterval(() => {
+      applyTheme(state.config?.theme || "light");
+    }, 60_000);
+
+    $id("refresh-tasks").addEventListener("click", loadAll);
+    $id("toggle-file-composer").addEventListener("click", () => {
+      if (state.activeFilesTab === "yesterday") return;
+      state.isFilesComposerOpen = !state.isFilesComposerOpen;
+      renderFiles();
+    });
+    $id("trigger-file-dialog").addEventListener("click", openDialog);
+    $id("save-settings").addEventListener("click", saveSettings);
+
+    document.addEventListener("dragover", (event) => {
+      const dropzone = event.target.closest("#files-dropzone");
+      if (!dropzone) return;
+      event.preventDefault();
+      dropzone.classList.add("dragover");
+    });
+
+    document.addEventListener("dragleave", (event) => {
+      const dropzone = event.target.closest("#files-dropzone");
+      if (!dropzone) return;
+      dropzone.classList.remove("dragover");
+    });
+
+    document.addEventListener("drop", async (event) => {
+      const dropzone = event.target.closest("#files-dropzone");
+      if (!dropzone) return;
+      event.preventDefault();
+      dropzone.classList.remove("dragover");
+      await handleFilesDrop(event.dataTransfer?.files);
+    });
+
+    document.addEventListener("click", async (event) => {
+      const dropzone = event.target.closest("#files-dropzone");
+      if (dropzone) {
+        await openDialog();
+      }
+    });
+
+    window.addEventListener("pywebviewready", loadAll);
+    if (window.pywebview) {
+      loadAll();
+    }
+    document.body.classList.add("view-tasks-active");
+  </script>
+</body>
+</html>
