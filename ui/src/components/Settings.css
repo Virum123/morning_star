@@ -2,48 +2,76 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  padding: 0 clamp(14px, 3vw, 42px);
 }
 
 .settings-card {
-  max-width: 650px;
+  width: min(640px, 100%);
+  max-width: 640px;
+  padding: 18px 22px;
+}
+
+.settings-card .form-section {
+  margin-bottom: 18px;
+}
+
+.settings-card .btn {
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  gap: 6px;
+}
+
+.settings-card .icon-btn {
+  padding: 5px;
+  border-radius: 7px;
 }
 
 .section-title {
-  font-size: 1.25rem;
+  font-size: 0.98rem;
   color: var(--text-primary);
   margin-bottom: 4px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .section-desc {
   color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 24px;
+  font-size: 0.78rem;
+  line-height: 1.42;
+  margin-bottom: 6px;
+}
+
+.section-note {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.38;
 }
 
 .times-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 .time-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .time-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--input-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 10px 16px;
+  border-radius: 10px;
+  padding: 8px 12px;
   transition: all 0.2s ease;
-  min-width: 210px;
+  min-width: 184px;
 }
 
 .time-input-wrapper:focus-within {
@@ -76,7 +104,7 @@
 
 /* Static display (non-edit mode) */
 .time-display-static {
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
   display: flex;
@@ -96,20 +124,20 @@
 /* Dropdown select for hour / minute / AM-PM */
 .time-dropdown {
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--input-bg);
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 4px 6px;
+  padding: 3px 5px;
   cursor: pointer;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   appearance: none;
   -webkit-appearance: none;
   text-align: center;
-  min-width: 46px;
+  min-width: 40px;
 }
 
 .time-dropdown:hover,
@@ -120,7 +148,7 @@
 
 /* AM/PM select inherits badge colours */
 .ampm-select {
-  min-width: 52px;
+  min-width: 46px;
 }
 
 .ampm-select.badge-am {
@@ -142,7 +170,7 @@ body.theme-dark .ampm-select.badge-pm {
 }
 
 .time-sep {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-muted);
   margin: 0 1px;
@@ -164,9 +192,9 @@ body.theme-dark .ampm-select.badge-pm {
 
 /* AM / PM display badge */
 .ampm-badge {
-  padding: 3px 9px;
+  padding: 2px 7px;
   border-radius: 6px;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.6px;
   flex-shrink: 0;
@@ -190,14 +218,14 @@ body.theme-dark .ampm-badge.badge-pm {
 
 .theme-select {
   width: 100%;
-  max-width: 250px;
-  padding: 12px 16px;
+  max-width: 230px;
+  padding: 9px 12px;
   background: var(--input-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
   appearance: none;
@@ -214,8 +242,8 @@ body.theme-dark .ampm-badge.badge-pm {
 }
 
 .form-actions {
-  margin-top: 32px;
-  padding-top: 24px;
+  margin-top: 24px;
+  padding-top: 18px;
   border-top: 1px solid var(--divider);
   display: flex;
   justify-content: flex-end;

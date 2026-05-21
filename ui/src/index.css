@@ -1,5 +1,6 @@
 :root {
-  font-family: "Avenir Next", "SF Pro Display", "Pretendard", "Helvetica Neue", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Apple SD Gothic Neo", "Pretendard", "Avenir Next", "Helvetica Neue", sans-serif;
+  font-size: 16.8px;
   color-scheme: light;
 
   --bg-gradient:
@@ -27,6 +28,7 @@
   --sidebar-hover-bg: rgba(212, 154, 38, 0.06);
 
   --card-bg: rgba(255, 252, 247, 0.92);
+  --freq-modal-bg: rgba(255, 252, 247, 0.97);
   --card-border: rgba(78, 53, 32, 0.08);
   --card-stripe: #d1a040;
   --card-shadow: 0 12px 36px rgba(96, 67, 38, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -49,6 +51,8 @@
 body {
   background: var(--bg-gradient);
   color: var(--text-primary);
+  font-family: inherit;
+  line-height: 1.45;
   display: flex;
   place-items: center;
   min-height: 100vh;
@@ -122,6 +126,7 @@ body.theme-dark {
   --sidebar-hover-bg: rgba(240, 191, 73, 0.06);
 
   --card-bg: rgba(27, 20, 22, 0.78);
+  --freq-modal-bg: rgba(27, 20, 22, 0.94);
   --card-border: rgba(245, 210, 113, 0.12);
   --card-stripe: #f0bf49;
   --card-shadow: 0 10px 32px rgba(0, 0, 0, 0.52), 0 0 0 1px rgba(245, 210, 113, 0.06);
@@ -188,6 +193,7 @@ body.theme-dynamic[data-dynamic-phase="morning"] {
   --sidebar-hover-bg: rgba(216, 157, 38, 0.06);
 
   --card-bg: rgba(255, 252, 247, 0.92);
+  --freq-modal-bg: rgba(255, 252, 247, 0.97);
   --card-border: rgba(98, 70, 40, 0.08);
   --card-stripe: #d4a243;
   --card-shadow: 0 12px 34px rgba(96, 67, 38, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -236,6 +242,7 @@ body.theme-dynamic[data-dynamic-phase="day"] {
   --sidebar-hover-bg: rgba(207, 147, 32, 0.05);
 
   --card-bg: rgba(255, 254, 251, 0.9);
+  --freq-modal-bg: rgba(255, 254, 251, 0.97);
   --card-border: rgba(98, 70, 40, 0.08);
   --card-stripe: #cfa04f;
   --card-shadow: 0 12px 30px rgba(110, 85, 52, 0.07), 0 1px 3px rgba(0, 0, 0, 0.03);
@@ -285,6 +292,7 @@ body.theme-dynamic[data-dynamic-phase="sunset"] {
   --sidebar-hover-bg: rgba(222, 138, 45, 0.06);
 
   --card-bg: rgba(255, 247, 241, 0.84);
+  --freq-modal-bg: rgba(255, 247, 241, 0.95);
   --card-border: rgba(109, 60, 35, 0.1);
   --card-stripe: #da8b3d;
   --card-shadow: 0 14px 34px rgba(120, 68, 40, 0.09), 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -334,6 +342,7 @@ body.theme-dynamic[data-dynamic-phase="night"] {
   --sidebar-hover-bg: rgba(233, 186, 83, 0.05);
 
   --card-bg: rgba(30, 23, 25, 0.8);
+  --freq-modal-bg: rgba(30, 23, 25, 0.95);
   --card-border: rgba(230, 188, 98, 0.1);
   --card-stripe: #e0af4c;
   --card-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(230, 188, 98, 0.04);
@@ -361,4 +370,12 @@ body.theme-dynamic[data-dynamic-phase="night"]::after {
   left: 5%;
   width: 40vw;
   height: 40vw;
+}
+
+body.theme-dynamic[data-dynamic-phase]::before {
+  background: var(--dynamic-before-bg);
+}
+
+body.theme-dynamic[data-dynamic-phase]::after {
+  background: var(--dynamic-after-bg);
 }

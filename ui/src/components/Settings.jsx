@@ -1,274 +1,397 @@
-import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Save, Clock } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Plus, Trash2, Save, Clock, RotateCcw } from 'lucide-react';
 import { api } from '../utils/api';
 import { trackEvent } from '../utils/analytics';
 import { t } from '../utils/i18n';
 import './Settings.css';
 
-export default function Settings({ lang = 'ko' }) {
-  const [config, setConfig] = useState(null);
-  const [nickname, setNickname] = useState('Alex');
-  const [loading, setLoading] = useState(true);
+function normalizeConfig(configSnapshot) {
+  const nextConfig = { ...(configSnapshot || {}) };
+
+  if (!nextConfig.target_times || nextConfig.target_times.length === 0) {
+    nextConfig.target_times = ['06:00'];
+  }
+  
+  if (nextConfig.theme && !nextConfig.themeMode) {
+    if (['purple', 'blue', 'green'].includes(nextConfig.theme)) {
+      nextConfig.themeMode = 'dark';
+      nextConfig.colorTheme = nextConfig.theme;
+    } else {
+      nextConfig.themeMode = nextConfig.theme;
+      nextConfig.colorTheme = 'default';
+    }
+  }
+
+  if (!nextConfig.themeMode) nextConfig.themeMode = 'light';
+  if (!nextConfig.colorTheme) nextConfig.colorTheme = 'default';
+  if (!nextConfig.language) nextConfig.language = 'ko';
+
+  return nextConfig;
+}
+
+export default function Settings({ lang = 'ko', configSnapshot = null, onConfigSaved }) {
+  const [config, setConfig] = useState(() => normalizeConfig(configSnapshot));
+  const [nickname, setNickname] = useState(configSnapshot?.nickname || 'Alex');
   const [saving, setSaving] = useState(false);
-
-  // Track which row is in "edit mode"
   const [editingIdx, setEditingIdx] = useState(null);
-  const inputRefs = useRef([]);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashItems, setTrashItems] = useState([]);
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-      const data = await api.getConfig();
-      if (!data.target_times || data.target_times.length === 0) {
-        data.target_times = ['06:00'];
-      }
-      if (!data.theme) data.theme = 'light';
-      if (!data.language) data.language = 'ko';
-      setConfig(data);
-      if (data.nickname) setNickname(data.nickname);
-      setLoading(false);
-    };
-    fetchConfig();
+  const loadTrash = useCallback(async () => {
+    try {
+      const trashFiles = await api.readTrashFiles();
+      setTrashItems(trashFiles || []);
+    } catch {
+      setTrashItems([]);
+    }
   }, []);
 
-  // Parse "HH:MM" (24h) → { hour12, minute, ampm }
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInitialTrash = async () => {
+      try {
+        const trashFiles = await api.readTrashFiles();
+        if (isMounted) {
+          setTrashItems(trashFiles || []);
+        }
+      } catch {
+        if (isMounted) {
+          setTrashItems([]);
+        }
+      }
+    };
+
+    loadInitialTrash();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const parseTime = (timeStr) => {
-    if (!timeStr) return { hour12: 6, minute: '00', ampm: 'AM', display: '6:00' };
+    if (!timeStr) return { hour12: 6, minute: '00', ampm: 'AM' };
     const [h, m] = timeStr.split(':');
-    let hours = parseInt(h, 10);
+    const hours = parseInt(h, 10);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 || 12;
-    return { hour12, minute: m, ampm, display: `${hour12}:${m}` };
+    return { hour12, minute: m, ampm };
   };
 
-  // Rebuild 24h string from hour12 + minute + ampm
   const buildTime = (hour12, minute, ampm) => {
     let h = parseInt(hour12, 10);
     if (ampm === 'PM' && h !== 12) h += 12;
     if (ampm === 'AM' && h === 12) h = 0;
-    return h.toString().padStart(2, '0') + ':' + minute;
+    return `${h.toString().padStart(2, '0')}:${minute}`;
   };
 
-  const handleAmPmToggle = (idx, currentAmPm) => {
-    const { hour12, minute } = parseTime(config.target_times[idx]);
-    const newAmPm = currentAmPm === 'AM' ? 'PM' : 'AM';
-    const newTimes = [...config.target_times];
-    newTimes[idx] = buildTime(hour12, minute, newAmPm);
-    setConfig({ ...config, target_times: newTimes });
+  const updateTargetTime = (idx, updater) => {
+    setConfig((currentConfig) => {
+      const nextTimes = [...currentConfig.target_times];
+      nextTimes[idx] = updater(nextTimes[idx]);
+      return { ...currentConfig, target_times: nextTimes };
+    });
   };
 
-  // Update hour (from select)
   const handleHourSelect = (idx, hour12) => {
-    const { minute, ampm } = parseTime(config.target_times[idx]);
-    const newTimes = [...config.target_times];
-    newTimes[idx] = buildTime(hour12, minute, ampm);
-    setConfig({ ...config, target_times: newTimes });
+    updateTargetTime(idx, (currentTime) => {
+      const { minute, ampm } = parseTime(currentTime);
+      return buildTime(hour12, minute, ampm);
+    });
   };
 
-  // Update minute (from select)
   const handleMinuteSelect = (idx, minute) => {
-    const { hour12, ampm } = parseTime(config.target_times[idx]);
-    const newTimes = [...config.target_times];
-    newTimes[idx] = buildTime(hour12, minute, ampm);
-    setConfig({ ...config, target_times: newTimes });
+    updateTargetTime(idx, (currentTime) => {
+      const { hour12, ampm } = parseTime(currentTime);
+      return buildTime(hour12, minute, ampm);
+    });
   };
 
-  // Update AM/PM (from select)
   const handleAmPmSelect = (idx, ampm) => {
-    const { hour12, minute } = parseTime(config.target_times[idx]);
-    const newTimes = [...config.target_times];
-    newTimes[idx] = buildTime(hour12, minute, ampm);
-    setConfig({ ...config, target_times: newTimes });
+    updateTargetTime(idx, (currentTime) => {
+      const { hour12, minute } = parseTime(currentTime);
+      return buildTime(hour12, minute, ampm);
+    });
   };
 
-  // When left-clock icon is clicked, activate edit mode for that row
   const handleClockClick = (idx) => {
-    setEditingIdx(editingIdx === idx ? null : idx);
+    setEditingIdx((currentIdx) => (currentIdx === idx ? null : idx));
   };
 
-  const handleThemeChange = (e) => {
-    setConfig({ ...config, theme: e.target.value });
+  const handleThemeModeChange = (e) => {
+    setConfig((currentConfig) => ({ ...currentConfig, themeMode: e.target.value }));
+  };
+
+  const handleColorThemeChange = (e) => {
+    setConfig((currentConfig) => ({ ...currentConfig, colorTheme: e.target.value }));
   };
 
   const handleLanguageChange = (e) => {
-    setConfig({ ...config, language: e.target.value });
+    setConfig((currentConfig) => ({ ...currentConfig, language: e.target.value }));
   };
 
   const handleAddTime = () => {
-    setConfig({ ...config, target_times: [...config.target_times, '07:00'] });
+    setConfig((currentConfig) => ({
+      ...currentConfig,
+      target_times: [...currentConfig.target_times, '07:00'],
+    }));
   };
 
   const handleRemoveTime = (index) => {
-    const newTimes = [...config.target_times];
-    newTimes.splice(index, 1);
-    if (newTimes.length === 0) newTimes.push('06:00');
-    setConfig({ ...config, target_times: newTimes });
+    setConfig((currentConfig) => {
+      const nextTimes = [...currentConfig.target_times];
+      nextTimes.splice(index, 1);
+      if (nextTimes.length === 0) nextTimes.push('06:00');
+      return { ...currentConfig, target_times: nextTimes };
+    });
     if (editingIdx === index) setEditingIdx(null);
+  };
+
+  const handleRestoreTrash = async (path) => {
+    setTrashLoading(true);
+    try {
+      await api.restoreTrash(path);
+      await onConfigSaved?.();
+      await loadTrash();
+    } finally {
+      setTrashLoading(false);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    setTrashLoading(true);
+    try {
+      await api.emptyTrash();
+      await onConfigSaved?.();
+      await loadTrash();
+    } finally {
+      setTrashLoading(false);
+    }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     setEditingIdx(null);
-    await api.saveConfig({
+
+    const nextConfig = {
       target_times: config.target_times,
-      theme: config.theme,
+      themeMode: config.themeMode,
+      colorTheme: config.colorTheme,
       language: config.language,
       nickname,
+    };
+
+    await api.saveConfig(nextConfig);
+    trackEvent('settings_save', {
+      target_times: config.target_times,
+      themeMode: config.themeMode,
+      colorTheme: config.colorTheme,
+      language: config.language,
     });
-    trackEvent('settings_save', { target_times: config.target_times, theme: config.theme, language: config.language });
-    window.dispatchEvent(new CustomEvent('themeChanged', { detail: config.theme }));
-    window.dispatchEvent(new CustomEvent('languageChanged', { detail: config.language }));
-    window.dispatchEvent(new CustomEvent('nicknameChanged', { detail: nickname }));
+    await onConfigSaved?.(nextConfig);
     setTimeout(() => setSaving(false), 600);
   };
 
   return (
-    <div className="settings-container fade-in">
-      {loading ? (
-        <div className="skeleton-loader">Loading settings...</div>
-      ) : (
-        <div className="settings-card glass-card">
-          <form className="settings-form" onSubmit={handleSave}>
+    <div className="settings-container">
+      <div className="settings-card glass-card">
+        <form className="settings-form" onSubmit={handleSave}>
+          <div className="form-section">
+            <h3 className="section-title">{t(lang, 'profile')}</h3>
+            <p className="section-desc">{t(lang, 'profileDesc')}</p>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="theme-select"
+              style={{ backgroundImage: 'none' }}
+              placeholder="Enter Nickname"
+              required
+            />
+          </div>
 
-            {/* Profile */}
-            <div className="form-section">
-              <h3 className="section-title">{t(lang, 'profile')}</h3>
-              <p className="section-desc">{t(lang, 'profileDesc')}</p>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                className="theme-select"
-                style={{ backgroundImage: 'none' }}
-                placeholder="Enter Nickname"
-                required
-              />
-            </div>
+          <div className="form-section">
+            <h3 className="section-title">{t(lang, 'targetTimes')}</h3>
+            <p className="section-desc">{t(lang, 'targetTimesDesc')}</p>
+            <p className="section-note">{t(lang, 'dayResetNote')}</p>
 
-            {/* Target Times */}
-            <div className="form-section">
-              <h3 className="section-title">{t(lang, 'targetTimes')}</h3>
-              <p className="section-desc">{t(lang, 'targetTimesDesc')}</p>
+            <div className="times-list">
+              {config.target_times.map((time, idx) => {
+                const { hour12, minute, ampm } = parseTime(time);
+                const isEditing = editingIdx === idx;
 
-              <div className="times-list">
-                {config.target_times.map((time, idx) => {
-                  const { hour12, minute, ampm } = parseTime(time);
-                  const isEditing = editingIdx === idx;
+                return (
+                  <div className="time-row" key={idx}>
+                    <div className={`time-input-wrapper ${isEditing ? 'editing' : ''}`}>
+                      <button
+                        type="button"
+                        className={`time-icon-btn ${isEditing ? 'active' : ''}`}
+                        onClick={() => handleClockClick(idx)}
+                        title={isEditing ? 'Close editor' : 'Click to edit time'}
+                      >
+                        <Clock size={17} className="time-icon" />
+                      </button>
 
-                  return (
-                    <div className="time-row" key={idx}>
-                      <div className={`time-input-wrapper ${isEditing ? 'editing' : ''}`}>
-                        {/* Left clock icon — click to enter edit mode */}
-                        <button
-                          type="button"
-                          className={`time-icon-btn ${isEditing ? 'active' : ''}`}
-                          onClick={() => handleClockClick(idx)}
-                          title={isEditing ? 'Close editor' : 'Click to edit time'}
-                        >
-                          <Clock size={20} className="time-icon" />
-                        </button>
-
-                        {/* Time display / edit */}
-                        {isEditing ? (
-                          <div className="time-edit-controls">
-                            {/* Hour dropdown */}
-                            <select
-                              className="time-dropdown"
-                              value={hour12}
-                              onChange={(e) => handleHourSelect(idx, e.target.value)}
-                            >
-                              {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                                <option key={h} value={h}>{h.toString().padStart(2, '0')}</option>
-                              ))}
-                            </select>
-                            <span className="time-sep">:</span>
-                            {/* Minute dropdown (5-min steps) */}
-                            <select
-                              className="time-dropdown"
-                              value={minute}
-                              onChange={(e) => handleMinuteSelect(idx, e.target.value)}
-                            >
-                              {Array.from({ length: 12 }, (_, i) => i * 5).map(m => (
-                                <option key={m} value={m.toString().padStart(2, '0')}>{m.toString().padStart(2, '0')}</option>
-                              ))}
-                            </select>
-                            {/* AM/PM dropdown */}
-                            <select
-                              className={`time-dropdown ampm-select ${ampm === 'AM' ? 'badge-am' : 'badge-pm'}`}
-                              value={ampm}
-                              onChange={(e) => handleAmPmSelect(idx, e.target.value)}
-                            >
-                              <option value="AM">AM</option>
-                              <option value="PM">PM</option>
-                            </select>
-                          </div>
-                        ) : (
-                          <span className="time-display-static">
-                            {hour12.toString().padStart(2, '0')}:{minute}
-                            <span className={`ampm-badge ${ampm === 'AM' ? 'badge-am' : 'badge-pm'}`} style={{ marginLeft: '8px' }}>
-                              {ampm}
-                            </span>
+                      {isEditing ? (
+                        <div className="time-edit-controls">
+                          <select
+                            className="time-dropdown"
+                            value={hour12}
+                            onChange={(e) => handleHourSelect(idx, e.target.value)}
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((hourValue) => (
+                              <option key={hourValue} value={hourValue}>
+                                {hourValue.toString().padStart(2, '0')}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="time-sep">:</span>
+                          <select
+                            className="time-dropdown"
+                            value={minute}
+                            onChange={(e) => handleMinuteSelect(idx, e.target.value)}
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i * 5).map((minuteValue) => {
+                              const value = minuteValue.toString().padStart(2, '0');
+                              return (
+                                <option key={value} value={value}>
+                                  {value}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <select
+                            className={`time-dropdown ampm-select ${ampm === 'AM' ? 'badge-am' : 'badge-pm'}`}
+                            value={ampm}
+                            onChange={(e) => handleAmPmSelect(idx, e.target.value)}
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <span className="time-display-static">
+                          {hour12.toString().padStart(2, '0')}:{minute}
+                          <span className={`ampm-badge ${ampm === 'AM' ? 'badge-am' : 'badge-pm'}`} style={{ marginLeft: '8px' }}>
+                            {ampm}
                           </span>
-                        )}
-                      </div>
-
-                      {config.target_times.length > 1 && (
-                        <button
-                          type="button"
-                          className="icon-btn remove-btn"
-                          onClick={() => handleRemoveTime(idx)}
-                          title="Remove Time"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      )}
-
-                      {idx === config.target_times.length - 1 && (
-                        <button
-                          type="button"
-                          className="btn btn-outline-primary add-time-btn"
-                          title="Add Target Time"
-                          onClick={handleAddTime}
-                        >
-                          <Plus size={16} />
-                        </button>
+                        </span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
 
-            {/* Appearance */}
-            <div className="form-section">
-              <h3 className="section-title">{t(lang, 'appearance')}</h3>
-              <p className="section-desc">{t(lang, 'appearanceDesc')}</p>
-              <select value={config.theme} onChange={handleThemeChange} className="theme-select">
+                    {config.target_times.length > 1 && (
+                      <button
+                        type="button"
+                        className="icon-btn remove-btn"
+                        onClick={() => handleRemoveTime(idx)}
+                        title="Remove Time"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+
+                    {idx === config.target_times.length - 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary add-time-btn"
+                        title="Add Target Time"
+                        onClick={handleAddTime}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="section-title">{t(lang, 'appearance')}</h3>
+            <p className="section-desc">{t(lang, 'appearanceDesc')}</p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select value={config.themeMode} onChange={handleThemeModeChange} className="theme-select" style={{ flex: 1 }}>
                 <option value="light">{t(lang, 'lightMode')}</option>
                 <option value="dark">{t(lang, 'darkMode')}</option>
                 <option value="dynamic">{t(lang, 'timeAdaptive')}</option>
               </select>
-            </div>
-
-            {/* Language */}
-            <div className="form-section">
-              <h3 className="section-title">{t(lang, 'language')}</h3>
-              <p className="section-desc">{t(lang, 'languageDesc')}</p>
-              <select value={config.language} onChange={handleLanguageChange} className="theme-select">
-                <option value="ko">한국어</option>
-                <option value="en">English</option>
-                <option value="jp">日本語</option>
+              <select value={config.colorTheme} onChange={handleColorThemeChange} className="theme-select" style={{ flex: 1 }}>
+                <option value="default">{t(lang, 'colorDefault') || '기본 (Default)'}</option>
+                <option value="purple">{t(lang, 'colorPurple') || '퍼플 (Purple)'}</option>
+                <option value="blue">{t(lang, 'colorBlue') || '블루 (Blue)'}</option>
+                <option value="green">{t(lang, 'colorGreen') || '그린 (Green)'}</option>
               </select>
             </div>
+          </div>
 
-            <div className="form-actions">
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                <Save size={18} /> {saving ? t(lang, 'saving') : t(lang, 'saveSettings')}
+          <div className="form-section">
+            <h3 className="section-title">{t(lang, 'language')}</h3>
+            <p className="section-desc">{t(lang, 'languageDesc')}</p>
+            <select value={config.language} onChange={handleLanguageChange} className="theme-select">
+              <option value="ko">한국어</option>
+              <option value="en">English</option>
+              <option value="jp">日本語</option>
+            </select>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              <Save size={16} /> {saving ? t(lang, 'saving') : t(lang, 'saveSettings')}
+            </button>
+          </div>
+        </form>
+
+        {/* Trash Management Section (outside form) */}
+        <div className="form-section" style={{ marginTop: '8px', borderTop: '1px solid var(--divider)', paddingTop: '24px' }}>
+          <h3 className="section-title">🗑️ {t(lang, 'trashSettingsTitle')}</h3>
+          <p className="section-desc">{t(lang, 'trashSettingsDesc')}</p>
+          
+          {trashItems.length === 0 ? (
+            <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+              {t(lang, 'trashNoItems')}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              {trashItems.map((file, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--card-border)',
+                  borderRadius: '8px',
+                  fontSize: '0.76rem',
+                  color: 'var(--text-secondary)',
+                }}>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {file.original_text?.replace(/^\s*[-*+]\s*\[[x ]\]\s*/i, '') || file.content?.trim() || file.filename}
+                  </span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => handleRestoreTrash(file.path)}
+                    disabled={trashLoading}
+                    title={t(lang, 'trashRestore')}
+                    style={{ flexShrink: 0 }}
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-outline-primary"
+                onClick={handleEmptyTrash}
+                disabled={trashLoading}
+                style={{ marginTop: '8px', width: '100%', color: '#e05555', borderColor: '#e05555' }}
+              >
+                <Trash2 size={16} /> {t(lang, 'trashEmpty')}
               </button>
             </div>
-          </form>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

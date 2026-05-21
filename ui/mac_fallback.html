@@ -824,10 +824,28 @@
       outline: none;
     }
 
+    #composer-name,
+    #composer-content {
+      color: #111111;
+      caret-color: #111111;
+    }
+
+    #composer-name::placeholder,
+    #composer-content::placeholder {
+      color: rgba(17, 17, 17, 0.55);
+    }
+
     .textarea {
       min-height: 180px;
       resize: vertical;
       line-height: 1.6;
+    }
+
+    .composer-help {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-secondary);
     }
 
     .time-list {
@@ -1782,8 +1800,42 @@ function getDynamicThemePhase(date = new Date()) {
       return "night";
     }
 
-    function applyTheme(theme) {
-      const phase = getDynamicThemePhase();
+    function getMsUntilNextThemePhaseChange(date = new Date()) {
+      const checkpoints = [5, 10, 17, 20]
+        .map((hour) => {
+          const checkpoint = new Date(date);
+          checkpoint.setHours(hour, 0, 0, 0);
+          if (checkpoint <= date) checkpoint.setDate(checkpoint.getDate() + 1);
+          return checkpoint;
+        })
+        .sort((left, right) => left - right);
+
+      return Math.max(checkpoints[0] - date, 60_000);
+    }
+
+    let themeRefreshTimer = null;
+    let appliedThemeState = { theme: null, phase: null };
+
+    function scheduleThemeRefresh(theme) {
+      if (themeRefreshTimer) {
+        window.clearTimeout(themeRefreshTimer);
+        themeRefreshTimer = null;
+      }
+
+      if (theme !== "dynamic") return;
+
+      const delay = getMsUntilNextThemePhaseChange(new Date());
+      themeRefreshTimer = window.setTimeout(() => {
+        applyTheme("dynamic", { force: true });
+      }, delay);
+    }
+
+    function applyTheme(theme, { force = false } = {}) {
+      const phase = theme === "dynamic" ? getDynamicThemePhase() : null;
+      if (!force && appliedThemeState.theme === theme && appliedThemeState.phase === phase) {
+        return;
+      }
+
       const useDarkChrome = theme === "dark" || (theme === "dynamic" && phase === "night");
 
       document.body.classList.toggle("theme-dark", useDarkChrome);
@@ -1794,6 +1846,9 @@ function getDynamicThemePhase(date = new Date()) {
       } else {
         delete document.body.dataset.dynamicPhase;
       }
+
+      appliedThemeState = { theme, phase };
+      scheduleThemeRefresh(theme);
     }
 
     function readStoredJson(key, fallback) {
@@ -2089,11 +2144,8 @@ function getDynamicThemePhase(date = new Date()) {
             </select>
           </div>
           <div class="field" style="margin-top: 12px;">
-            <textarea class="textarea" id="composer-content"># Morning plan
-
-- [ ] Water and stretch
-- [ ] Pick the top 3 priorities
-- [ ] Start the first important task</textarea>
+            <textarea class="textarea" id="composer-content" placeholder="회의 준비&#10;운동하기&#10;메일 답장"></textarea>
+            <div class="composer-help">Plain text is okay. Each line will be saved as a separate task automatically.</div>
           </div>
           <div class="button-row">
             <button class="btn btn-primary" id="composer-save">Save Task</button>
@@ -2301,7 +2353,7 @@ function getDynamicThemePhase(date = new Date()) {
       }
 
       const filename = name.toLowerCase().endsWith(".md") ? name : `${name}.md`;
-      await api().process_dropped_content(target, [{ name: filename, content }]);
+      await api().process_dropped_content(target, [{ name: filename, content, normalize_tasks: true }]);
       setStatus("files-status", "Task file saved.", "ok");
       await loadAll();
     }
@@ -2506,10 +2558,6 @@ function getDynamicThemePhase(date = new Date()) {
         applyTheme(event.target.value);
       }
     });
-
-    window.setInterval(() => {
-      applyTheme(state.config?.theme || "light");
-    }, 60_000);
 
     $id("refresh-tasks").addEventListener("click", loadAll);
     $id("toggle-file-composer").addEventListener("click", () => {

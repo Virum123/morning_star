@@ -1,6 +1,7 @@
 # Build artifacts
 build/
 dist/
+.pyinstaller/
 
 # Claude Code internal
 .claude/
@@ -36,3 +37,6 @@ Desktop.ini
 
 # Logs
 *.log
+
+# Local app data
+.morning_star_data/

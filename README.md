@@ -3,25 +3,22 @@
 Morning Star is a desktop app that greets you with your Markdown-based to-do list at your chosen wake-up time. It started as a Windows background app and now also includes a macOS app build path, refreshed app branding, and mac-friendly local storage.
 
 ## 🌟 Key Features
-- **Daily Auto-Migration:** Drop your `.md` task files into the **Tomorrow** tab. When the clock strikes your target time the next day, they automatically migrate to **Today**, and old tasks move into an organized **Yesterday** history.
-- **Premium Glassmorphism UI:** Built with Vite + React, the interface features a stunning dark-mode/light-mode togglable aesthetic mimicking high-end iOS designs.
-- **In-App Markdown Editor & Persistence:** Write tasks directly in the app, and interactively check them off. Your `[x]` checkmarks are permanently saved to the local markdown file!
-- **Zero-Friction Startup:** Runs completely silently in the Windows background utilizing a Mutex lock. It only pops up the beautiful UI when it's time for you to see your tasks.
-- **Anonymous Analytics Tracker:** Includes a built-in UUID session tracker for Google Analytics 4 (GA4) / Tag Manager integrations, allowing you to measure retention without needing user accounts!
+- **Daily Auto-Migration:** Tomorrow's tasks move into Today when a new app day starts, and completed days are organized into a dated history.
+- **Planner Views:** Daily, weekly, and monthly views share the same local Markdown-backed task data.
+- **Fast Task Entry:** Add one-off tasks from the planner or reuse Frequent Tasks across selected days.
+- **Local Persistence:** Checklist changes are written back to local Markdown files stored in the app data directory.
+- **Desktop Startup:** Windows can run in background startup mode, while macOS packages as a `.app` bundle with a Desktop launcher.
 
 ## 🚀 How to Use
 1. **Launch the App:** Run `Morning Star.exe`. (The app automatically registers itself to run silently on Windows Startup).
 2. **Profile & Timing:** Navigate to the `Settings` tab. Enter your **Nickname** and set one or more **Target Times** (e.g., `07:00 AM`). 
-3. **Plan Tomorrow:** Go to the `Files` -> `Tomorrow` tab. Click the **Write Task** button or Drag-and-Drop an existing `.md` file into the dashed Dropzone.
+3. **Plan Your Day:** Use the `Planner` tab to add tasks, review today, plan tomorrow, and scan weekly/monthly progress.
 4. **Wake Up:** Close the UI. The app will stay asleep in the background. At `07:00 AM`, the window will elegantly pop up displaying your "Today" tasks, greeting you by name!
 
 ## 🛠️ Tech Stack
 - **Backend/Host:** Python 3, `pywebview`, `pyinstaller`, Windows Registry startup integration.
-- **Frontend UI:** Vite, React 18, standard custom CSS (No Tailwind).
+- **Frontend UI:** Vite, React 19, standard custom CSS (No Tailwind).
 - **Storage:** Local app data in `%LOCALAPPDATA%/MorningStar` on Windows and `~/Library/Application Support/MorningStar` on macOS.
-
-## 📱 Future Roadmap
-Check out `next_step.md` for a guide on how to port this project into a Mobile App (Android/PlayStore) or a Toss Mini Web-App utilizing Capacitor or React Native.
 
 ## 🏗️ Building for Production
 
@@ -70,12 +67,7 @@ npm run build
 cd ..
 ```
 
-3. Generate the refreshed app icon and cover assets:
-```bash
-PYTHONPATH=.vendor python3 make_icon.py
-```
-
-4. Build the macOS app bundle:
+3. Build the macOS app bundle:
 ```bash
 PYTHONPATH=.vendor python3 build_mac_app.py
 ```
@@ -84,3 +76,5 @@ Output:
 ```bash
 dist/Morning Star.app
 ```
+
+The Desktop `Morning Star.app` is refreshed as a hidden launcher that opens the latest packaged app bundle.

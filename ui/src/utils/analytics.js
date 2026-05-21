@@ -11,15 +11,12 @@ export const setAnalyticsUser = (userId) => {
 export const trackEvent = (eventName, eventData = {}) => {
   const payload = {
     event: eventName,
-    user_id: globalUserId, // Anonymous Tracker UUID
+    user_id: globalUserId,
     timestamp: new Date().toISOString(),
     ...eventData
   };
-  
-  console.log(`[Analytics Track]`, payload);
-  
-  // Future GTM Integration:
-  // if (window.dataLayer) {
-  //   window.dataLayer.push(payload);
-  // }
+
+  if (window.dataLayer) {
+    window.dataLayer.push(payload);
+  }
 };
