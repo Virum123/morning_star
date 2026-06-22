@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, CalendarCheck, CheckCircle2, ChevronDown, ChevronUp, Circle, X } from 'lucide-react';
-import { api } from '../utils/api';
+import { getScheduleActivityLog, getSchedules } from '../services/scheduleService';
 import { t } from '../utils/i18n';
 import { buildDateSummaries, getAppDateContext, getByDateFiles } from '../utils/plannerData';
 import './Archive.css';
@@ -16,7 +16,7 @@ export default function Archive({ lang = 'ko' }) {
   const loadFiles = useCallback(async () => {
     setLoading(true);
     try {
-      const [allFiles, log] = await Promise.all([api.readAllFiles(), api.readActivityLog()]);
+      const [allFiles, log] = await Promise.all([getSchedules(), getScheduleActivityLog()]);
       setFilesData(allFiles || { byDate: {}, yesterday: {} });
       setActivityLog(log || []);
     } finally {

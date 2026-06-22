@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Calendar, LayoutGrid, CalendarDays, Star } from 'lucide-react';
-import { api } from '../utils/api';
+import { getScheduleCompletionDays, getSchedules, saveScheduleCompletionDays } from '../services/scheduleService';
 import { t } from '../utils/i18n';
 import { buildCompletedDateFireDays } from '../utils/plannerData';
 import DailyPlanner from './DailyPlanner';
@@ -34,14 +34,13 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
   const loadContent = useCallback(async () => {
     setLoading(true);
     try {
-      const files = await api.readAllFiles();
+      const files = await getSchedules();
       setFilesData(files);
-      const rawFire = localStorage.getItem('ms_fire_days');
-      const parsedFireDays = rawFire ? JSON.parse(rawFire) : {};
+      const parsedFireDays = getScheduleCompletionDays();
       const completedFireDays = buildCompletedDateFireDays(files);
       const nextFireDays = { ...parsedFireDays, ...completedFireDays };
       if (Object.keys(completedFireDays).some((dateStr) => !parsedFireDays[dateStr])) {
-        localStorage.setItem('ms_fire_days', JSON.stringify(nextFireDays));
+        saveScheduleCompletionDays(nextFireDays);
       }
       setFireDays(nextFireDays);
       setStreak(calculateStreakFromFireDays(nextFireDays));
@@ -55,7 +54,7 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
   // Silent refresh: syncs filesData without triggering loading state (preserves scroll)
   const silentRefresh = useCallback(async () => {
     try {
-      const files = await api.readAllFiles();
+      const files = await getSchedules();
       setFilesData(files);
     } catch (e) {
       console.error('Failed to silently refresh planner data.', e);
@@ -76,7 +75,7 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
     const nextFireDays = { ...fireDays, ...completedFireDays };
     setFireDays(nextFireDays);
     setStreak(calculateStreakFromFireDays(nextFireDays));
-    localStorage.setItem('ms_fire_days', JSON.stringify(nextFireDays));
+    saveScheduleCompletionDays(nextFireDays);
   }, [filesData, fireDays, loading]);
 
   const handleJumpToDaily = (dateStr) => {

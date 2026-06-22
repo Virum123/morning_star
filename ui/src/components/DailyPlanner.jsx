@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Flame, CheckCircle2, Circle, ChevronLeft, ChevronRight, PenLine, Send, Plus, GripVertical, Trash2, X, Star } from 'lucide-react';
-import { api } from '../utils/api';
+import {
+  createSchedule,
+  deleteSchedule,
+  getFrequentSchedules,
+  saveFrequentSchedules,
+  saveScheduleCompletionDays,
+  updateSchedule,
+} from '../services/scheduleService';
 import { trackEvent } from '../utils/analytics';
 import { t } from '../utils/i18n';
 import { localDateStr, appTodayDate } from '../utils/date';
@@ -190,7 +197,7 @@ export default function DailyPlanner({
 
     const loadFrequentTasks = async () => {
       try {
-        const tasks = await api.getFrequentTasks();
+        const tasks = await getFrequentSchedules();
         if (!isMounted) return;
         setFrequentTasks(tasks || []);
         setSelectedFreqIds(new Set());
@@ -260,7 +267,7 @@ export default function DailyPlanner({
   const markFire = (eventName) => {
     const updated  = { ...fireDays, [todayStr]: true };
     setFireDays(updated);
-    localStorage.setItem('ms_fire_days', JSON.stringify(updated));
+    saveScheduleCompletionDays(updated);
     setStreak(calculateStreakFromFireDays(updated));
     trackEvent(eventName);
   };
@@ -289,7 +296,7 @@ export default function DailyPlanner({
     updatedFiles[fileIndex] = { ...file, content: newContent };
     setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
 
-    const res = await api.updateFileContent(file.path, newContent);
+    const res = await updateSchedule({ filepath: file.path, content: newContent });
     if (!res || !res.success) {
       console.error('Failed to persist checkbox state.');
       loadContent();
@@ -308,11 +315,11 @@ export default function DailyPlanner({
       if (activeFiles.length > 0) {
         const targetFile = activeFiles[0];
         const newContent = (targetFile.content || '').trim() + '\n' + taskLine;
-        await api.updateFileContent(targetFile.path, newContent);
+        await updateSchedule({ filepath: targetFile.path, content: newContent });
       } else {
         const filename = 'Daily_Tasks.md';
         const filesDataArr = [{ name: filename, content: taskLine, normalize_tasks: false }];
-        await api.processDroppedContent(activeTarget, filesDataArr);
+        await createSchedule({ target: activeTarget, files: filesDataArr });
       }
 
       setQuickTaskText('');
@@ -340,7 +347,7 @@ export default function DailyPlanner({
     updatedFiles[fileIndex] = { ...file, content: newContent };
     setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
 
-    const res = await api.updateFileContent(file.path, newContent);
+    const res = await updateSchedule({ filepath: file.path, content: newContent });
     if (!res || !res.success) {
       console.error('Failed to persist inline edit.');
       loadContent();
@@ -471,7 +478,7 @@ export default function DailyPlanner({
     updatedFiles[targetFileIndex] = { ...file, content: newContent };
     setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
 
-    await api.updateFileContent(file.path, newContent);
+    await updateSchedule({ filepath: file.path, content: newContent });
   };
 
   const handleDeleteTask = async (fileIndex, lineIndex) => {
@@ -489,13 +496,13 @@ export default function DailyPlanner({
     updatedFiles[fileIndex] = { ...file, content: newContent };
     setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
 
-    await api.updateFileContent(file.path, newContent);
+    await updateSchedule({ filepath: file.path, content: newContent });
     await handleTrashTask(removedLine, file.filename);
   };
 
   const handleTrashTask = async (taskText, filename) => {
     try {
-      await api.trashTask(taskText, filename || 'deleted_task');
+      await deleteSchedule({ taskText, filename });
     } catch (err) {
       console.error("Failed to add to trash", err);
     }
@@ -527,7 +534,7 @@ export default function DailyPlanner({
 
   const handleMigrateTask = async (task) => {
     try {
-      const result = await api.migrateUnfinishedTask({
+      const result = await updateSchedule({
         sourcePath: task.filePath,
         sourceDate: task.date,
         lineIndex: task.lineIndex,
@@ -557,14 +564,14 @@ export default function DailyPlanner({
   const handleAddNewFreqTask = async () => {
     if (!newFreqTaskText.trim()) return;
     const updated = [...frequentTasks, newFreqTaskText.trim()];
-    await api.saveFrequentTasks(updated);
+    await saveFrequentSchedules(updated);
     setFrequentTasks(updated);
     setNewFreqTaskText('');
   };
 
   const handleRemoveFreqTask = async (idx) => {
     const updated = frequentTasks.filter((_, i) => i !== idx);
-    await api.saveFrequentTasks(updated);
+    await saveFrequentSchedules(updated);
     setFrequentTasks(updated);
     setSelectedFreqIds(prev => {
       const next = new Set(prev);
@@ -584,7 +591,7 @@ export default function DailyPlanner({
   const handleDeleteSelectedFreqTasks = async () => {
     if (selectedFreqIds.size === 0) return;
     const updated = frequentTasks.filter((_, i) => !selectedFreqIds.has(i));
-    await api.saveFrequentTasks(updated);
+    await saveFrequentSchedules(updated);
     setFrequentTasks(updated);
     setSelectedFreqIds(new Set());
     trackEvent('freq_tasks_deleted_bulk', { count: selectedFreqIds.size });
@@ -621,7 +628,7 @@ export default function DailyPlanner({
     const selected = frequentTasks.filter((_, i) => selectedFreqIds.has(i));
     if (selected.length === 0) return;
     try {
-      await api.addFrequentTasksToDay(selected, selectedDateStr);
+      await createSchedule({ frequentTasks: selected, targetDate: selectedDateStr });
       await loadContent();
       closeFreqModal();
       trackEvent('freq_tasks_added_daily');

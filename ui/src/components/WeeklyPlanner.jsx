@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical, Star, Plus, X, Trash2 } from 'lucide-react';
 import { localDateStr, appTodayDate } from '../utils/date';
-import { api } from '../utils/api';
+import {
+  createSchedule,
+  getFrequentSchedules,
+  recordScheduleActivity,
+  saveFrequentSchedules,
+  updateSchedule,
+} from '../services/scheduleService';
 import { t } from '../utils/i18n';
 import { getDateBucket, getFilesForDate as getPlannerFilesForDate, parseChecklist } from '../utils/plannerData';
 import './Planner.css';
@@ -156,14 +162,14 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
     setDragItem(null);
 
     // Persist to server
-    await api.updateFileContent(srcFile.path, newSrcContent);
+    await updateSchedule({ filepath: srcFile.path, content: newSrcContent });
     if (tgtFile) {
-      await api.updateFileContent(tgtFile.path, newTgtContent);
+      await updateSchedule({ filepath: tgtFile.path, content: newTgtContent });
     } else {
-      await api.addTaskToDate(newTaskLine, targetDateStr);
+      await createSchedule({ taskLine: newTaskLine, targetDate: targetDateStr });
       silentRefresh?.();
     }
-    await api.recordActivity?.(
+    await recordScheduleActivity(
       'task_moved',
       `${dragItem.dateStr}에서 ${targetDateStr}로 일정을 이동했습니다.`,
       { source_date: dragItem.dateStr, target_date: targetDateStr, task_text: dragItem.text },
@@ -196,7 +202,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
 
     const loadFrequentTasks = async () => {
       try {
-        const tasks = await api.getFrequentTasks();
+        const tasks = await getFrequentSchedules();
         if (!isMounted) return;
         setFrequentTasks(tasks || []);
         setSelectedFreqIds(new Set());
@@ -226,14 +232,14 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
   const handleAddNewFreqTask = async () => {
     if (!newFreqTaskText.trim()) return;
     const updated = [...frequentTasks, newFreqTaskText.trim()];
-    await api.saveFrequentTasks(updated);
+    await saveFrequentSchedules(updated);
     setFrequentTasks(updated);
     setNewFreqTaskText('');
   };
 
   const handleRemoveFreqTask = async (idx) => {
     const updated = frequentTasks.filter((_, i) => i !== idx);
-    await api.saveFrequentTasks(updated);
+    await saveFrequentSchedules(updated);
     setFrequentTasks(updated);
     setSelectedFreqIds(prev => {
       const next = new Set(prev);
@@ -253,7 +259,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
   const handleDeleteSelectedFreqTasks = async () => {
     if (selectedFreqIds.size === 0) return;
     const updated = frequentTasks.filter((_, i) => !selectedFreqIds.has(i));
-    await api.saveFrequentTasks(updated);
+    await saveFrequentSchedules(updated);
     setFrequentTasks(updated);
     setSelectedFreqIds(new Set());
   };
@@ -291,7 +297,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
     if (selected.length === 0 || selectedDays.size === 0) return;
     try {
       for (const dateStr of selectedDays) {
-        await api.addFrequentTasksToDay(selected, dateStr);
+        await createSchedule({ frequentTasks: selected, targetDate: dateStr });
       }
       await loadContent();
       closeFreqModal();

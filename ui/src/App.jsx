@@ -5,6 +5,9 @@ import { trackEvent, setAnalyticsUser } from './utils/analytics';
 import { t } from './utils/i18n';
 import './App.css';
 import { DYNSUN } from './utils/suns';
+import { getCurrentUser, onAuthStateChange } from './services/authService';
+import LoginPage from './components/LoginPage';
+import AuthDebugBanner from './components/AuthDebugBanner';
 
 // Components
 import Settings from './components/Settings';
@@ -526,6 +529,42 @@ function applyThemeMode(themeMode, colorTheme, date = new Date()) {
 }
 
 function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getCurrentUser()
+      .then((user) => {
+        if (isMounted) {
+          setCurrentUser(user);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to check auth state:', error);
+        if (isMounted) {
+          setCurrentUser(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsAuthChecking(false);
+        }
+      });
+
+    const subscription = onAuthStateChange((user) => {
+      if (isMounted) {
+        setCurrentUser(user);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription?.unsubscribe();
+    };
+  }, []);
+
   const [activeTab, setActiveTab] = useState('planner');
   const [appConfig, setAppConfig] = useState(null);
   const [themeMode, setThemeMode] = useState('light');
@@ -764,8 +803,37 @@ function App() {
     { id: 'settings', icon: <SettingsIcon size={18} />, label: t(lang, 'settings') },
   ];
 
+  if (isAuthChecking) {
+    return (
+      <>
+        <AuthDebugBanner />
+        <div style={{ padding: '24px' }}>로그인 상태 확인 중...</div>
+      </>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <>
+        <AuthDebugBanner />
+        <LoginPage
+          onAuthSuccess={async () => {
+            try {
+              const user = await getCurrentUser();
+              setCurrentUser(user);
+            } catch (error) {
+              console.error('Failed to refresh auth state:', error);
+              setCurrentUser(null);
+            }
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="app-container" onDragOver={handleDragOver} onDrop={handleDrop}>
+      <AuthDebugBanner />
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
