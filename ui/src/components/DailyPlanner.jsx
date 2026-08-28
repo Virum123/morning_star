@@ -301,7 +301,7 @@ export default function DailyPlanner({
       console.error('Failed to persist checkbox state.');
       loadContent();
     } else {
-      trackEvent('task_check_planner', { filename: file.filename, checked: !currentChecked });
+      trackEvent('task_check_planner', { checked: !currentChecked, target: activeTarget });
     }
   };
 

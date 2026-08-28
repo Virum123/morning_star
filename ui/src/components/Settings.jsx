@@ -3,6 +3,7 @@ import { Plus, Trash2, Save, Clock, RotateCcw } from 'lucide-react';
 import { api } from '../utils/api';
 import { trackEvent } from '../utils/analytics';
 import { t } from '../utils/i18n';
+import { AnalyticsConsentSettings } from './AnalyticsConsent';
 import './Settings.css';
 
 function normalizeConfig(configSnapshot) {
@@ -183,10 +184,10 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
 
     await api.saveConfig(nextConfig);
     trackEvent('settings_save', {
-      target_times: config.target_times,
-      themeMode: config.themeMode,
-      colorTheme: config.colorTheme,
-      language: config.language,
+      target_time_count: config.target_times.length,
+      theme_mode: config.themeMode,
+      color_theme: config.colorTheme,
+      app_language: config.language,
     });
     await onConfigSaved?.(nextConfig);
     setTimeout(() => setSaving(false), 600);
@@ -340,6 +341,8 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
             </button>
           </div>
         </form>
+
+        <AnalyticsConsentSettings lang={lang} />
 
         {/* Trash Management Section (outside form) */}
         <div className="form-section" style={{ marginTop: '8px', borderTop: '1px solid var(--divider)', paddingTop: '24px' }}>

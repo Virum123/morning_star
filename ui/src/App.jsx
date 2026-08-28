@@ -572,6 +572,10 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    setAnalyticsUser(currentUserId);
+  }, [currentUserId]);
+
   const [activeTab, setActiveTab] = useState('planner');
   const [appConfig, setAppConfig] = useState(null);
   const [themeMode, setThemeMode] = useState('light');
@@ -625,7 +629,6 @@ function App() {
     setLang(config?.language || 'ko');
     setNickname(config?.nickname || 'Alex');
     setAppConfig(config || null);
-    if (config?.user_id) setAnalyticsUser(config.user_id);
   }, [syncThemeMode]);
 
   const refreshActiveTabData = useCallback((tab = activeTabRef.current) => {
@@ -891,7 +894,7 @@ function App() {
                 setActiveTab(id);
                 if (id === 'planner') setPlannerRefreshSignal((currentSignal) => currentSignal + 1);
                 if (id === 'archive') setArchiveKey((currentKey) => currentKey + 1);
-                trackEvent(`tab_${id}`);
+                trackEvent('tab_view', { tab_name: id });
               }}
             >
               {icon}
