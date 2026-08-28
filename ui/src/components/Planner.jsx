@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Calendar, LayoutGrid, CalendarDays, Star } from 'lucide-react';
 import { getScheduleCompletionDays, getSchedules, saveScheduleCompletionDays } from '../services/scheduleService';
 import { t } from '../utils/i18n';
+import { appTodayDate, localDateFromStr, localDateStr, startOfLocalWeek } from '../utils/date';
 import { buildCompletedDateFireDays } from '../utils/plannerData';
 import DailyPlanner from './DailyPlanner';
 import WeeklyPlanner from './WeeklyPlanner';
@@ -11,11 +12,14 @@ import './Planner.css';
 export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
   const [activeView, setActiveView] = useState('daily'); // 'daily', 'weekly', 'monthly'
   const [targetDateStr, setTargetDateStr] = useState(null);
+  const [weeklyOffset, setWeeklyOffset] = useState(0);
   const [freqTrigger, setFreqTrigger] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filesData, setFilesData] = useState({ tomorrow: [], today: [], byDate: {}, yesterday: {} });
   const [streak, setStreak] = useState(0);
   const [fireDays, setFireDays] = useState({});
+  const appDateKey = localDateStr(appTodayDate());
+  const previousAppDateRef = useRef(appDateKey);
 
   function calculateStreakFromFireDays(fireDaysObj = {}) {
     const markedDays = Object.keys(fireDaysObj).filter(k => fireDaysObj[k]).sort();
@@ -66,6 +70,18 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
   }, [loadContent, refreshSignal]);
 
   useEffect(() => {
+    const previousAppDate = previousAppDateRef.current;
+    if (previousAppDate === appDateKey) return;
+
+    if (!targetDateStr || targetDateStr === previousAppDate) {
+      setTargetDateStr(appDateKey);
+      setWeeklyOffset(0);
+    }
+    previousAppDateRef.current = appDateKey;
+    loadContent();
+  }, [appDateKey, loadContent, targetDateStr]);
+
+  useEffect(() => {
     if (loading) return;
 
     const completedFireDays = buildCompletedDateFireDays(filesData);
@@ -78,27 +94,45 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
     saveScheduleCompletionDays(nextFireDays);
   }, [filesData, fireDays, loading]);
 
-  const handleJumpToDaily = (dateStr) => {
+  const handleDateChange = useCallback((dateStr) => {
     setTargetDateStr(dateStr);
+
+    const selectedDate = localDateFromStr(dateStr);
+    const currentDate = localDateFromStr(appDateKey);
+    if (selectedDate && currentDate) {
+      const selectedMonday = startOfLocalWeek(selectedDate);
+      const currentMonday = startOfLocalWeek(currentDate);
+      setWeeklyOffset(Math.round((selectedMonday - currentMonday) / 86400000));
+    }
+  }, [appDateKey]);
+
+  const handleJumpToDaily = useCallback((dateStr) => {
+    handleDateChange(dateStr);
     setActiveView('daily');
-  };
+  }, [handleDateChange]);
 
   return (
     <div className="planner-container fade-in">
-      <div className="planner-view-tabs glass-card">
+      <div className="planner-view-tabs glass-card" aria-label={t(lang, 'planner')}>
         <button
+          type="button"
+          aria-pressed={activeView === 'daily'}
           className={`view-tab-btn ${activeView === 'daily' ? 'active' : ''}`}
           onClick={() => setActiveView('daily')}
         >
           <CalendarDays size={18} /> {t(lang, 'daily')}
         </button>
         <button
+          type="button"
+          aria-pressed={activeView === 'weekly'}
           className={`view-tab-btn ${activeView === 'weekly' ? 'active' : ''}`}
           onClick={() => setActiveView('weekly')}
         >
           <LayoutGrid size={18} /> {t(lang, 'weekly')}
         </button>
         <button
+          type="button"
+          aria-pressed={activeView === 'monthly'}
           className={`view-tab-btn ${activeView === 'monthly' ? 'active' : ''}`}
           onClick={() => setActiveView('monthly')}
         >
@@ -125,6 +159,7 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
             setFireDays={setFireDays}
             loadContent={loadContent}
             targetDateStr={targetDateStr}
+            onDateChange={handleDateChange}
             freqTrigger={freqTrigger}
           />
         )}
@@ -137,6 +172,9 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
             loadContent={loadContent}
             silentRefresh={silentRefresh}
             freqTrigger={freqTrigger}
+            onJumpToDaily={handleJumpToDaily}
+            weekOffset={weeklyOffset}
+            setWeekOffset={setWeeklyOffset}
           />
         )}
         {activeView === 'monthly' && (

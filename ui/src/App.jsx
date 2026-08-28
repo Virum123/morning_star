@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard, LogOut } from 'lucide-react';
+import { FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard, LogOut, Globe2 } from 'lucide-react';
 import { api } from './utils/api';
 import { trackEvent, setAnalyticsUser } from './utils/analytics';
 import { t } from './utils/i18n';
@@ -583,6 +583,7 @@ function App() {
   const [lang, setLang] = useState('ko');
   const [isReady, setIsReady] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [nickname, setNickname] = useState('Alex');
   const [plannerRefreshSignal, setPlannerRefreshSignal] = useState(0);
   const [archiveKey, setArchiveKey] = useState(0);
@@ -650,6 +651,20 @@ function App() {
     applyConfigSnapshot(mergedConfig);
     return mergedConfig;
   }, [appConfig, applyConfigSnapshot]);
+
+  const handleLanguageChange = useCallback(async (nextLanguage) => {
+    setLang(nextLanguage);
+    setAppConfig((currentConfig) => ({ ...(currentConfig || {}), language: nextLanguage }));
+    try {
+      await api.saveConfig({ language: nextLanguage });
+    } catch (error) {
+      console.error('Failed to save language preference:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang === 'jp' ? 'ja' : lang;
+  }, [lang]);
 
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -788,7 +803,7 @@ function App() {
 
   const renderContent = () => {
     if (!isReady) {
-      return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</div>;
+      return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>{t(lang, 'loadingApp')}</div>;
     }
 
     const wrapper = (children) => (
@@ -830,7 +845,7 @@ function App() {
     return (
       <>
         {import.meta.env.DEV && <AuthDebugBanner />}
-        <div style={{ padding: '24px' }}>로그인 상태 확인 중...</div>
+        <div style={{ padding: '24px' }}>{t(lang, 'checkingLogin')}</div>
       </>
     );
   }
@@ -880,15 +895,18 @@ function App() {
           />
           <div>
             <h1 className="sidebar-title">Morning Star</h1>
-            <p className="sidebar-subtitle">Forge tomorrow tonight.</p>
+            <p className="sidebar-subtitle">{t(lang, 'brandTagline')}</p>
           </div>
         </div>
 
         <nav className="sidebar-nav">
           {navItems.map(({ id, icon, label }) => (
-            <div
+            <button
+              type="button"
               key={id}
               className={`nav-item ${activeTab === id ? 'active' : ''}`}
+              aria-label={label}
+              aria-current={activeTab === id ? 'page' : undefined}
               onClick={() => {
                 activeTabRef.current = id;
                 setActiveTab(id);
@@ -899,27 +917,56 @@ function App() {
             >
               {icon}
               <span>{label}</span>
-            </div>
+            </button>
           ))}
 
 
           <div style={{ flexGrow: 1 }} />
 
-          <div
+          <div className="sidebar-language" role="group" aria-label={t(lang, 'languageSwitcherLabel')}>
+            <div className="sidebar-language-label">
+              <Globe2 size={14} />
+              <span>{t(lang, 'languageSwitcherLabel')}</span>
+            </div>
+            <div className="sidebar-language-options">
+              {[
+                { id: 'ko', label: '한' },
+                { id: 'en', label: 'EN' },
+                { id: 'jp', label: '日' },
+              ].map((language) => (
+                <button
+                  type="button"
+                  key={language.id}
+                  className={lang === language.id ? 'active' : ''}
+                  onClick={() => handleLanguageChange(language.id)}
+                  aria-pressed={lang === language.id}
+                  aria-label={language.id === 'ko' ? '한국어' : language.id === 'en' ? 'English' : '日本語'}
+                  title={language.id === 'ko' ? '한국어' : language.id === 'en' ? 'English' : '日本語'}
+                >
+                  {language.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="button"
             className="nav-item"
+            aria-label={t(lang, 'howToUse')}
             onClick={() => {
+              setIsPromptCopied(false);
               setIsHelpOpen(true);
               trackEvent('onboarding_view');
             }}
           >
             <HelpCircle size={18} />
             <span>{t(lang, 'howToUse')}</span>
-          </div>
+          </button>
 
-          <div className="nav-item" onClick={handleSignOut}>
+          <button type="button" className="nav-item" onClick={handleSignOut} aria-label={t(lang, 'signOut')}>
             <LogOut size={18} />
-            <span>{lang === 'ko' ? '로그아웃' : 'Sign out'}</span>
-          </div>
+            <span>{t(lang, 'signOut')}</span>
+          </button>
         </nav>
       </aside>
 
@@ -931,32 +978,39 @@ function App() {
       {/* Help Modal */}
       {isHelpOpen && (
         <div className="modal-overlay fade-in" onClick={() => setIsHelpOpen(false)}>
-          <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px', maxHeight: '88vh', overflowY: 'auto' }}>
-            <button className="icon-btn close-modal-btn" onClick={() => setIsHelpOpen(false)}>
+          <div
+            className="modal-content glass-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="help-dialog-title"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '560px', maxHeight: '88vh', overflowY: 'auto' }}
+          >
+            <button type="button" className="icon-btn close-modal-btn" onClick={() => setIsHelpOpen(false)} aria-label={t(lang, 'freqCancel')}>
               <X size={20} />
             </button>
-            <h2 className="modal-title">Welcome to Morning Star! ⭐️</h2>
+            <h2 id="help-dialog-title" className="modal-title">{t(lang, 'helpTitle')}</h2>
 
             <div className="onboarding-steps">
               <div className="step-item">
                 <div className="step-number">1</div>
                 <div className="step-text">
-                  <strong>Plan your Tomorrow</strong>
-                  <p>Use the <b>Planner</b> quick-add bar or Frequent Tasks to stage work for today and tomorrow.</p>
+                  <strong>{t(lang, 'helpStep1Title')}</strong>
+                  <p>{t(lang, 'helpStep1Desc')}</p>
                 </div>
               </div>
               <div className="step-item">
                 <div className="step-number">2</div>
                 <div className="step-text">
-                  <strong>Set your Morning Routine</strong>
-                  <p>Go to the <b>Settings Tab</b> and set the time you usually wake up.</p>
+                  <strong>{t(lang, 'helpStep2Title')}</strong>
+                  <p>{t(lang, 'helpStep2Desc')}</p>
                 </div>
               </div>
               <div className="step-item">
                 <div className="step-number">3</div>
                 <div className="step-text">
-                  <strong>Track your Progress</strong>
-                  <p>Use the <b>Planner</b> daily, weekly, and monthly views to review progress and streaks.</p>
+                  <strong>{t(lang, 'helpStep3Title')}</strong>
+                  <p>{t(lang, 'helpStep3Desc')}</p>
                 </div>
               </div>
             </div>
@@ -964,19 +1018,27 @@ function App() {
             {/* ── AI Prompt Template ── */}
             <div style={{ marginTop: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>🤖 AI Task Generator Prompt</strong>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>✦ {t(lang, 'aiTaskGeneratorTitle')}</strong>
                 <button
                   className="btn btn-outline-primary"
                   style={{ padding: '4px 12px', fontSize: '0.78rem' }}
                   onClick={() => {
                     const prompt = document.getElementById('ms-prompt-box').value;
-                    navigator.clipboard.writeText(prompt).catch(() => {
+                    const copyOperation = navigator.clipboard?.writeText
+                      ? navigator.clipboard.writeText(prompt)
+                      : Promise.reject(new Error('Clipboard API unavailable'));
+                    copyOperation.then(() => {
+                      setIsPromptCopied(true);
+                      window.setTimeout(() => setIsPromptCopied(false), 1600);
+                    }).catch(() => {
                       document.getElementById('ms-prompt-box').select();
                       document.execCommand('copy');
+                      setIsPromptCopied(true);
+                      window.setTimeout(() => setIsPromptCopied(false), 1600);
                     });
                   }}
                 >
-                  Copy
+                  {t(lang, isPromptCopied ? 'copiedPrompt' : 'copyPrompt')}
                 </button>
               </div>
               <textarea
@@ -996,19 +1058,10 @@ function App() {
                   resize: 'none',
                   lineHeight: '1.55',
                 }}
-                defaultValue={`You are a professional daily planner assistant. Your job is to create a clean, concise markdown task list based on the user's input.
-
-Rules:
-- Output ONLY a markdown checklist. No headings, no explanations.
-- Each item must use "- [ ] " format.
-- Group related tasks under a short section heading using "## ".  
-- Respond in the SAME language the user writes their tasks in.
-- End with a blank line after the last item.
-
-Now organize the tasks listed below:`}
+                value={t(lang, 'aiPromptTemplate')}
               />
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: '1.5' }}>
-                ① Copy the prompt above → ② Paste into your AI assistant → ③ Add your rough notes → ④ Add the cleaned-up tasks in Planner.
+                {t(lang, 'aiPromptGuide')}
               </p>
             </div>
 
@@ -1017,7 +1070,7 @@ Now organize the tasks listed below:`}
               style={{ marginTop: '20px', width: '100%' }}
               onClick={() => setIsHelpOpen(false)}
             >
-              Got it! Let's start
+              {t(lang, 'helpStart')}
             </button>
           </div>
         </div>

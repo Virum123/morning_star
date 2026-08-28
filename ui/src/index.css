@@ -1,7 +1,14 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Apple SD Gothic Neo", "Pretendard", "Avenir Next", "Helvetica Neue", sans-serif;
-  font-size: 16.8px;
+  font-size: 16px;
   color-scheme: light;
+
+  --font-display: Georgia, "Times New Roman", "Noto Serif KR", "Noto Serif JP", serif;
+  --paper-texture:
+    repeating-linear-gradient(96deg, rgba(91, 58, 31, 0.018) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(4deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 9px);
+  --ornament-line: rgba(137, 91, 32, 0.22);
+  --surface-highlight: rgba(255, 255, 255, 0.52);
 
   --bg-gradient:
     radial-gradient(circle at 18% 14%, rgba(255, 233, 176, 0.82), transparent 18%),
@@ -49,7 +56,7 @@
 }
 
 body {
-  background: var(--bg-gradient);
+  background: var(--paper-texture), var(--bg-gradient);
   color: var(--text-primary);
   font-family: inherit;
   line-height: 1.45;
@@ -97,6 +104,22 @@ body::after {
   z-index: 1;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+}
+
 /* ── Dark Theme Overrides ── */
 body.theme-dark {
   color-scheme: dark;
@@ -138,6 +161,19 @@ body.theme-dark {
   --divider: rgba(245, 210, 113, 0.08);
   --pill-active-bg: rgba(240, 191, 73, 0.12);
   --pill-active-border: rgba(240, 191, 73, 0.28);
+  --ornament-line: rgba(240, 191, 73, 0.2);
+  --surface-highlight: rgba(255, 255, 255, 0.035);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body.theme-dark::before {

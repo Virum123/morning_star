@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, CalendarCheck, CheckCircle2, ChevronDown, ChevronUp, Circle, X } from 'lucide-react';
 import { getScheduleActivityLog, getSchedules } from '../services/scheduleService';
 import { t } from '../utils/i18n';
@@ -12,6 +12,21 @@ export default function Archive({ lang = 'ko' }) {
   const [loading, setLoading] = useState(true);
   const [expandedDates, setExpandedDates] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
+  const previewCloseRef = useRef(null);
+
+  useEffect(() => {
+    if (!selectedFile) return undefined;
+    const previousFocus = document.activeElement;
+    previewCloseRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setSelectedFile(null);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [selectedFile]);
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -260,11 +275,11 @@ export default function Archive({ lang = 'ko' }) {
 
       {selectedFile && (
         <div className="modal-overlay files-modal-overlay fade-in" onClick={closeFilePreview}>
-          <div className="modal-content glass-card file-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="icon-btn close-modal-btn" onClick={closeFilePreview}>
+          <div className="modal-content glass-card file-preview-modal" role="dialog" aria-modal="true" aria-labelledby="file-preview-title" onClick={(e) => e.stopPropagation()}>
+            <button ref={previewCloseRef} type="button" className="icon-btn close-modal-btn" onClick={closeFilePreview} aria-label={t(lang, 'closeDialog')}>
               <X size={20} />
             </button>
-            <h2 className="modal-title">{selectedFile.filename}</h2>
+            <h2 id="file-preview-title" className="modal-title">{selectedFile.filename}</h2>
             <p className="file-preview-meta">
               {selectedFile.sectionLabel} · {formatDate(selectedFile.added_date)}
             </p>

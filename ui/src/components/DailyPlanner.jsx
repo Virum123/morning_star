@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Flame, CheckCircle2, Circle, ChevronLeft, ChevronRight, PenLine, Send, Plus, GripVertical, Trash2, X, Star } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Flame, CheckCircle2, Circle, ChevronLeft, ChevronRight, PenLine, Send, Plus, GripVertical, Trash2, X, Star, CalendarDays } from 'lucide-react';
 import {
   createSchedule,
   deleteSchedule,
@@ -9,8 +9,8 @@ import {
   updateSchedule,
 } from '../services/scheduleService';
 import { trackEvent } from '../utils/analytics';
-import { t } from '../utils/i18n';
-import { localDateStr, appTodayDate } from '../utils/date';
+import { localeForLanguage, t } from '../utils/i18n';
+import { localDateStr, appTodayDate, localDateFromStr, startOfLocalWeek } from '../utils/date';
 import {
   getByDateFiles,
   getFilesForDate,
@@ -109,6 +109,7 @@ export default function DailyPlanner({
   setFireDays,
   loadContent,
   targetDateStr,
+  onDateChange,
   freqTrigger = 0,
 }) {
   const [fireBtnClicked, setFireBtnClicked] = useState(false);
@@ -127,19 +128,25 @@ export default function DailyPlanner({
   const isPastSelectedDate = selectedDateStr < todayStr;
   const [weekOffset, setWeekOffset] = useState(0);
 
+  const selectDate = useCallback((dateStr) => {
+    const targetDate = localDateFromStr(dateStr);
+    const currentDate = localDateFromStr(todayStr);
+    if (!targetDate || !currentDate) return;
+
+    const targetMonday = startOfLocalWeek(targetDate);
+    const currentMonday = startOfLocalWeek(currentDate);
+    const daysDiff = Math.round((targetMonday - currentMonday) / 86400000);
+
+    setSelectedDateStr(dateStr);
+    setWeekOffset(daysDiff);
+    onDateChange?.(dateStr);
+  }, [onDateChange, todayStr]);
+
   useEffect(() => {
     if (targetDateStr) {
-      setSelectedDateStr(targetDateStr);
-      const targetDate = new Date(targetDateStr);
-      const targetMonday = new Date(targetDate);
-      targetMonday.setDate(targetDate.getDate() - ((targetDate.getDay() + 6) % 7));
-      const currentDate = new Date(`${todayStr}T00:00:00`);
-      const currentMonday = new Date(currentDate);
-      currentMonday.setDate(currentDate.getDate() - ((currentDate.getDay() + 6) % 7));
-      const weeksDiff = Math.round((targetMonday - currentMonday) / (1000 * 60 * 60 * 24));
-      setWeekOffset(weeksDiff);
+      selectDate(targetDateStr);
     }
-  }, [targetDateStr, todayStr]);
+  }, [selectDate, targetDateStr]);
 
   // Quick Add state
   const [quickTaskText, setQuickTaskText] = useState('');
@@ -156,6 +163,34 @@ export default function DailyPlanner({
   const droppedOnValidTarget = useRef(false);
   const dragCancelled = useRef(false);
   const taskListRef = useRef(null);
+  const calendarStripRef = useRef(null);
+  const streakCloseRef = useRef(null);
+  const freqCloseRef = useRef(null);
+
+  useEffect(() => {
+    const strip = calendarStripRef.current;
+    const selectedButton = strip?.querySelector('[aria-pressed="true"]');
+    if (!strip || !selectedButton || strip.scrollWidth <= strip.clientWidth) return;
+
+    strip.scrollTo({
+      left: selectedButton.offsetLeft - ((strip.clientWidth - selectedButton.offsetWidth) / 2),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
+  }, [selectedDateStr, weekOffset]);
+
+  useEffect(() => {
+    if (!showStreakModal) return undefined;
+    const previousFocus = document.activeElement;
+    streakCloseRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setShowStreakModal(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [showStreakModal]);
 
   // Stable random values for "어제 못한 일 없음" message — only re-rolls on remount
   const randomEmojiIdx = useRef(Math.floor(Math.random() * 10));
@@ -168,6 +203,23 @@ export default function DailyPlanner({
   const [newFreqTaskText, setNewFreqTaskText] = useState('');
   const handledFreqTriggerRef = useRef(freqTrigger);
 
+  useEffect(() => {
+    if (!showFreqModal) return undefined;
+    const previousFocus = document.activeElement;
+    freqCloseRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowFreqModal(false);
+        setSelectedFreqIds(new Set());
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [showFreqModal]);
+
   const { activeTarget, activeFiles, canEdit } = useMemo(() => {
     const activeFilesForDate = getFilesForDate(selectedDateStr, filesData, dateContext, { latestToday: true });
     if (selectedDateStr === todayStr) return { activeTarget: 'today', activeFiles: activeFilesForDate, canEdit: true };
@@ -175,9 +227,21 @@ export default function DailyPlanner({
     return {
       activeTarget: 'byDate',
       activeFiles: activeFilesForDate,
-      canEdit: false,
+      canEdit: selectedDateStr > todayStr,
     };
   }, [dateContext, filesData, selectedDateStr, todayStr, tomorrowStr]);
+
+  const setActiveFiles = useCallback((updatedFiles) => {
+    setFilesData((currentFilesData) => {
+      if (activeTarget !== 'byDate') {
+        return { ...currentFilesData, [activeTarget]: updatedFiles };
+      }
+
+      const currentByDate = currentFilesData.byDate || currentFilesData.yesterday || {};
+      const nextByDate = { ...currentByDate, [selectedDateStr]: updatedFiles };
+      return { ...currentFilesData, byDate: nextByDate, yesterday: nextByDate };
+    });
+  }, [activeTarget, selectedDateStr, setFilesData]);
 
   // Escape key detection during drag
   useEffect(() => {
@@ -294,7 +358,7 @@ export default function DailyPlanner({
 
     const updatedFiles = [...activeFiles];
     updatedFiles[fileIndex] = { ...file, content: newContent };
-    setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
+    setActiveFiles(updatedFiles);
 
     const res = await updateSchedule({ filepath: file.path, content: newContent });
     if (!res || !res.success) {
@@ -317,9 +381,7 @@ export default function DailyPlanner({
         const newContent = (targetFile.content || '').trim() + '\n' + taskLine;
         await updateSchedule({ filepath: targetFile.path, content: newContent });
       } else {
-        const filename = 'Daily_Tasks.md';
-        const filesDataArr = [{ name: filename, content: taskLine, normalize_tasks: false }];
-        await createSchedule({ target: activeTarget, files: filesDataArr });
+        await createSchedule({ taskLine, targetDate: selectedDateStr });
       }
 
       setQuickTaskText('');
@@ -345,7 +407,7 @@ export default function DailyPlanner({
 
     const updatedFiles = [...activeFiles];
     updatedFiles[fileIndex] = { ...file, content: newContent };
-    setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
+    setActiveFiles(updatedFiles);
 
     const res = await updateSchedule({ filepath: file.path, content: newContent });
     if (!res || !res.success) {
@@ -476,7 +538,7 @@ export default function DailyPlanner({
     const newContent = contentLines.join('\n');
     const updatedFiles = [...activeFiles];
     updatedFiles[targetFileIndex] = { ...file, content: newContent };
-    setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
+    setActiveFiles(updatedFiles);
 
     await updateSchedule({ filepath: file.path, content: newContent });
   };
@@ -494,7 +556,7 @@ export default function DailyPlanner({
     const newContent = contentLines.join('\n');
     const updatedFiles = [...activeFiles];
     updatedFiles[fileIndex] = { ...file, content: newContent };
-    setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
+    setActiveFiles(updatedFiles);
 
     const scheduleId = file.scheduleRows?.[lineIndex]?.id;
     if (scheduleId) {
@@ -638,7 +700,7 @@ export default function DailyPlanner({
 
   const handleApplyFreqTasks = async () => {
     const selected = frequentTasks.filter((_, i) => selectedFreqIds.has(i));
-    if (selected.length === 0) return;
+    if (selected.length === 0 || !canEdit) return;
     try {
       await createSchedule({ frequentTasks: selected, targetDate: selectedDateStr });
       await loadContent();
@@ -685,7 +747,7 @@ export default function DailyPlanner({
                     onDrop={(e) => handleDropOnTask(e, fileIndex, lineIndex)}
                   >
                     {canEdit && (
-                      <div className="drag-handle" title="Drag to reorder">
+                      <div className="drag-handle" title={t(lang, 'dragToReorder')}>
                         <GripVertical size={16} />
                       </div>
                     )}
@@ -728,7 +790,7 @@ export default function DailyPlanner({
                         <button className="task-edit-trigger" onClick={() => setEditingItem({ fileIndex, lineIndex, text })}>
                           <PenLine size={14} />
                         </button>
-                        <button className="task-delete-btn" onClick={() => handleDeleteTask(fileIndex, lineIndex)} title="Delete task">
+                        <button className="task-delete-btn" onClick={() => handleDeleteTask(fileIndex, lineIndex)} title={t(lang, 'deleteTask')}>
                           <Trash2 size={16} />
                         </button>
                       </>
@@ -819,35 +881,76 @@ export default function DailyPlanner({
     });
 
     return (
-      <div className="planner-calendar-wrapper glass-card" style={{ display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-        <button className="icon-btn" onClick={() => setWeekOffset(w => w - 7)}><ChevronLeft size={16} /></button>
-        <div className="planner-calendar" style={{ flex: 1, border: 'none', background: 'transparent', padding: '5px 4px', boxShadow: 'none' }}>
+      <div className="planner-calendar-wrapper glass-card">
+        <button
+          type="button"
+          className="icon-btn calendar-arrow-btn"
+          onClick={() => {
+            const current = localDateFromStr(selectedDateStr) || todayDate;
+            current.setDate(current.getDate() - 7);
+            selectDate(localDateStr(current));
+          }}
+          aria-label={t(lang, 'previousWeek')}
+          title={t(lang, 'previousWeek')}
+        >
+          <ChevronLeft size={17} />
+        </button>
+        <div ref={calendarStripRef} className="planner-calendar" style={{ flex: 1, border: 'none', background: 'transparent', padding: '5px 4px', boxShadow: 'none' }}>
           {weekDays.map(({ dateStr, dayName, dayNum, topLabel }) => {
             const isSelected = selectedDateStr === dateStr;
             const isTodayStr = dateStr === todayStr;
-            const isTomorrowStr = dateStr === tomorrowStr;
-            const hasData = byDateFiles[dateStr] || dateStr === todayStr || dateStr === tomorrowStr;
+            const hasData = Boolean(byDateFiles[dateStr] || dateStr === todayStr || dateStr === tomorrowStr);
             const isFire = fireDays[dateStr];
 
             return (
-              <div
+              <button
+                type="button"
                 key={dateStr}
-                className={`planner-cal-day ${isSelected ? 'selected' : ''} ${isTodayStr ? 'today' : ''} ${!hasData && !isTomorrowStr ? 'disabled' : ''}`}
-                onClick={() => { if (hasData || isTomorrowStr) setSelectedDateStr(dateStr); }}
+                className={`planner-cal-day ${isSelected ? 'selected' : ''} ${isTodayStr ? 'today' : ''} ${hasData ? 'has-schedule' : ''}`}
+                onClick={() => selectDate(dateStr)}
+                aria-pressed={isSelected}
+                aria-current={isTodayStr ? 'date' : undefined}
+                title={`${dateStr} · ${t(lang, 'viewDaySchedule')}`}
               >
                 <span className="cal-day-name">{topLabel ? <strong style={{color: 'var(--accent-color)'}}>{topLabel}</strong> : dayName}</span>
-                <div className="cal-day-num-wrapper">
-                  {isFire ? <Flame size={14} color="#ff6a00" fill="#ff6a00" strokeWidth={1.5} /> : <span className="cal-day-num">{dayNum}</span>}
-                </div>
-                {isTodayStr && <div className="cal-indicator" />}
-              </div>
+                <span className="cal-day-num-wrapper">
+                  <span className="cal-day-num">{dayNum}</span>
+                  {isFire && <Flame size={11} className="calendar-fire" fill="currentColor" strokeWidth={1.5} />}
+                </span>
+                {isTodayStr && <span className="cal-indicator" />}
+              </button>
             );
           })}
         </div>
-        <button className="icon-btn" onClick={() => setWeekOffset(w => w + 7)}><ChevronRight size={16} /></button>
+        <button
+          type="button"
+          className="icon-btn calendar-arrow-btn"
+          onClick={() => {
+            const current = localDateFromStr(selectedDateStr) || todayDate;
+            current.setDate(current.getDate() + 7);
+            selectDate(localDateStr(current));
+          }}
+          aria-label={t(lang, 'nextWeek')}
+          title={t(lang, 'nextWeek')}
+        >
+          <ChevronRight size={17} />
+        </button>
       </div>
     );
   };
+
+  const selectedDateLabel = useMemo(() => {
+    const selectedDate = localDateFromStr(selectedDateStr);
+    if (!selectedDate) return selectedDateStr;
+    return new Intl.DateTimeFormat(localeForLanguage(lang), {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    }).format(selectedDate);
+  }, [lang, selectedDateStr]);
+
+  const progressStats = selectedDateStr === todayStr ? todayStats : stats;
 
   return (
     <div className="planner-container fade-in">
@@ -856,8 +959,28 @@ export default function DailyPlanner({
       <div className="planner-layout">
         <div className="planner-main">
           <div className="planner-header">
-            <h2>{selectedDateStr === todayStr ? t(lang, 'todaysPlan') : selectedDateStr === tomorrowStr ? t(lang, 'tomorrowsPlan') : `${t(lang, 'planFor')}${selectedDateStr}`}</h2>
-            {!canEdit && <span className="badge-readonly">{t(lang, isPastSelectedDate ? 'readOnlyPast' : 'readOnlyPlanned')}</span>}
+            <div>
+              <span className="planner-date-eyebrow">{selectedDateLabel}</span>
+              <h2>{selectedDateStr === todayStr ? t(lang, 'todaysPlan') : selectedDateStr === tomorrowStr ? t(lang, 'tomorrowsPlan') : `${t(lang, 'planFor')}${selectedDateLabel}`}</h2>
+            </div>
+            <div className="planner-date-actions">
+              {selectedDateStr !== todayStr && (
+                <button type="button" className="today-jump-btn" onClick={() => selectDate(todayStr)}>
+                  {t(lang, 'goToToday')}
+                </button>
+              )}
+              <label className="date-picker-control" title={t(lang, 'datePickerLabel')}>
+                <CalendarDays size={15} />
+                <span className="visually-hidden">{t(lang, 'datePickerLabel')}</span>
+                <input
+                  type="date"
+                  value={selectedDateStr}
+                  onChange={(event) => selectDate(event.target.value)}
+                  aria-label={t(lang, 'datePickerLabel')}
+                />
+              </label>
+              {!canEdit && <span className="badge-readonly">{t(lang, 'readOnlyPast')}</span>}
+            </div>
           </div>
 
           <div
@@ -901,22 +1024,22 @@ export default function DailyPlanner({
         {/* Sidebar */}
         <div className="planner-sidebar">
           <div className="glass-card widget-card">
-            <h3 className="widget-title">{t(lang, 'todaysProgress')}</h3>
+            <h3 className="widget-title">{t(lang, selectedDateStr === todayStr ? 'todaysProgress' : 'selectedDateProgress')}</h3>
             <div className="widget-donut-center">
-              <DonutChart percent={todayStats.pct} size={92} strokeWidth={9} label={{ doneText: t(lang, 'done') }} />
+              <DonutChart percent={progressStats.pct} size={92} strokeWidth={9} label={{ doneText: t(lang, 'done') }} />
             </div>
             <div className="widget-stats-row">
               <div className="w-stat">
-                <span>{todayStats.totalChecked}</span>
+                <span>{progressStats.totalChecked}</span>
                 <label>{t(lang, 'completed')}</label>
               </div>
               <div className="w-stat">
-                <span>{todayStats.totalItems - todayStats.totalChecked}</span>
+                <span>{progressStats.totalItems - progressStats.totalChecked}</span>
                 <label>{t(lang, 'remaining')}</label>
               </div>
             </div>
 
-            {todayStats.totalItems === 0 && (
+            {selectedDateStr === todayStr && todayStats.totalItems === 0 && (
               <button
                 className={`ds-fire-btn no-tasks-btn ${alreadyFired ? 'fired' : ''}`}
                 onClick={() => { if (!alreadyFired) markFire('no_task_fire'); }}
@@ -929,7 +1052,7 @@ export default function DailyPlanner({
               </button>
             )}
 
-            {todayStats.totalItems > 0 && todayStats.totalChecked >= todayStats.totalItems && (
+            {selectedDateStr === todayStr && todayStats.totalItems > 0 && todayStats.totalChecked >= todayStats.totalItems && (
               <button
                 className={`ds-fire-btn ${alreadyFired ? 'fired' : ''}`}
                 onClick={() => {
@@ -994,18 +1117,7 @@ export default function DailyPlanner({
                     {['🎉', '🔥', '✨', '🚀', '🌟', '💪', '🏆', '💯', '🎈', '👍'][randomEmojiIdx.current]}
                   </div>
                   <div className="unfinished-empty-copy">
-                    {[
-                      "어제 모든 계획을 완료했어요!",
-                      "어제는 정말 알찬 하루였네요!",
-                      "할 일을 완벽히 비우셨군요!",
-                      "밀린 일 없는 깔끔한 오늘입니다!",
-                      "완벽한 하루를 보낸 스스로를 칭찬해주세요!",
-                      "목표를 모두 이룬 멋진 하루였어요!",
-                      "어제의 당신이 자랑스럽습니다!",
-                      "오늘도 어제처럼 멋지게 해내보아요!",
-                      "훌륭합니다! 모든 일정을 마쳤어요.",
-                      "어제 못한 일이 하나도 없네요! 대단해요!"
-                    ][randomMsgIdx.current]}
+                    {t(lang, 'unfinishedPraiseMessages')[randomMsgIdx.current % t(lang, 'unfinishedPraiseMessages').length]}
                   </div>
                 </div>
               )}
@@ -1017,13 +1129,13 @@ export default function DailyPlanner({
       {/* Frequent Tasks Modal */}
       {showStreakModal && (
         <div className="freq-modal-overlay" onClick={() => setShowStreakModal(false)}>
-          <div className="streak-modal" onClick={e => e.stopPropagation()}>
+          <div className="streak-modal" role="dialog" aria-modal="true" aria-labelledby="streak-modal-title" onClick={e => e.stopPropagation()}>
             <div className="streak-modal-header">
               <div className="streak-modal-title">
                 <Flame size={17} className="streak-icon" />
-                <h3>{t(lang, 'streakStatsTitle')}</h3>
+                <h3 id="streak-modal-title">{t(lang, 'streakStatsTitle')}</h3>
               </div>
-              <button className="icon-btn" onClick={() => setShowStreakModal(false)}><X size={18} /></button>
+              <button ref={streakCloseRef} type="button" className="icon-btn" onClick={() => setShowStreakModal(false)} aria-label={t(lang, 'closeDialog')}><X size={18} /></button>
             </div>
 
             <div className="streak-stat-grid">
@@ -1049,10 +1161,10 @@ export default function DailyPlanner({
 
       {showFreqModal && (
         <div className="freq-modal-overlay" onClick={closeFreqModal}>
-          <div className="freq-modal" onClick={e => e.stopPropagation()}>
+          <div className="freq-modal" role="dialog" aria-modal="true" aria-labelledby="daily-freq-modal-title" onClick={e => e.stopPropagation()}>
             <div className="freq-modal-header">
-              <h3><Star size={16} style={{ marginRight: 6 }} />{t(lang, 'frequentTasks')}</h3>
-              <button className="icon-btn" onClick={closeFreqModal}><X size={20} /></button>
+              <h3 id="daily-freq-modal-title"><Star size={16} style={{ marginRight: 6 }} />{t(lang, 'frequentTasks')}</h3>
+              <button ref={freqCloseRef} type="button" className="icon-btn" onClick={closeFreqModal} aria-label={t(lang, 'closeDialog')}><X size={20} /></button>
             </div>
 
             {renderFreqBulkToolbar()}
@@ -1105,7 +1217,7 @@ export default function DailyPlanner({
               <button
                 className="freq-apply-btn"
                 onClick={handleApplyFreqTasks}
-                disabled={selectedFreqIds.size === 0}
+                disabled={selectedFreqIds.size === 0 || !canEdit}
               >
                 {t(lang, 'freqAdd')} {selectedFreqIds.size > 0 ? `(${selectedFreqIds.size})` : ''}
               </button>

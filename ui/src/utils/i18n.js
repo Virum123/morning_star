@@ -20,6 +20,7 @@ export const translations = {
     slateClean: "일정이 비어있습니다!",
     addTasksTomorrow: "플래너에서 오늘 또는 내일 일정을 추가해 주세요.",
     todaysProgress: "오늘의 진행률",
+    selectedDateProgress: "선택한 날의 진행률",
     done: "진행",
     streak: "연속 달성일",
     dailyInspiration: "오늘의 한 마디",
@@ -39,6 +40,14 @@ export const translations = {
     colorGreen: '그린',
     language: '언어',
     languageDesc: '사용할 언어를 선택하세요.',
+    brandTagline: '오늘 밤, 내일을 벼리다.',
+    loadingApp: 'Morning Star를 준비하는 중...',
+    checkingLogin: '로그인 상태를 확인하는 중...',
+    nicknamePlaceholder: '사용할 이름을 입력하세요',
+    closeTimeEditor: '시간 편집 닫기',
+    editTime: '시간 편집',
+    removeTime: '시간 삭제',
+    addTime: '목표 시간 추가',
     saveSettings: '설정 저장',
     saving: '저장 중...',
     analyticsConsentTitle: '사용 통계 수집',
@@ -130,6 +139,56 @@ export const translations = {
     archiveFiles: '파일',
     archiveSourceFiles: '원본 파일',
     archiveNoTasksForDate: '이 날짜에는 체크리스트 항목이 없습니다.',
+    signOut: '로그아웃',
+    closeDialog: '닫기',
+    languageSwitcherLabel: '표시 언어',
+    datePickerLabel: '날짜 선택',
+    goToToday: '오늘로',
+    previousWeek: '이전 주',
+    nextWeek: '다음 주',
+    previousMonth: '이전 달',
+    nextMonth: '다음 달',
+    currentWeek: '이번 주',
+    viewDaySchedule: '일간 일정 보기',
+    weeklyOverview: '한 주의 일정',
+    weeklyOverviewDesc: '날짜를 누르면 해당 날의 일정을 자세히 볼 수 있습니다.',
+    noTasksForDay: '일정 없음',
+    taskCountUnit: '개 일정',
+    completedCountUnit: '개 완료',
+    freqDaySelectPrompt: '추가할 날짜를 선택하세요',
+    pastDateTitle: '지난 날짜',
+    taskMovedActivity: '일정을 이동했습니다.',
+    dragToReorder: '드래그하여 순서 변경',
+    deleteTask: '일정 삭제',
+    unfinishedPraiseMessages: [
+      '어제 모든 계획을 완료했어요!',
+      '밀린 일 없이 가벼운 오늘입니다.',
+      '어제의 목표를 모두 이뤘어요!',
+      '완료의 흐름을 오늘도 이어가 보세요.',
+      '어제의 당신이 멋지게 해냈습니다!',
+    ],
+    helpTitle: 'Morning Star 사용 안내',
+    helpStep1Title: '원하는 날짜에 계획하기',
+    helpStep1Desc: '일간 달력이나 월간 달력에서 날짜를 고르고, 아래 입력창으로 일정을 바로 추가하세요.',
+    helpStep2Title: '한 주를 한눈에 보기',
+    helpStep2Desc: '주간 화면에서 진행률을 살피고, 날짜를 누르면 그날의 상세 일정으로 이동합니다.',
+    helpStep3Title: '나만의 리듬 만들기',
+    helpStep3Desc: '설정에서 기상 시간과 화면 테마를 정하고 연속 달성 기록을 이어가세요.',
+    aiTaskGeneratorTitle: 'AI 일정 정리 프롬프트',
+    copyPrompt: '복사',
+    copiedPrompt: '복사됨',
+    aiPromptGuide: '① 위 문구를 복사 → ② AI 도구에 붙여넣기 → ③ 메모를 덧붙이기 → ④ 정리된 일정을 플래너에 추가',
+    helpStart: '확인했어요, 시작하기',
+    aiPromptTemplate: `당신은 전문적인 데일리 플래너 도우미입니다. 사용자가 적은 내용을 간결한 마크다운 할 일 목록으로 정리하세요.
+
+규칙:
+- 제목이나 설명 없이 마크다운 체크리스트만 출력합니다.
+- 각 항목은 반드시 "- [ ] " 형식을 사용합니다.
+- 관련 일정은 짧은 "## " 소제목 아래 묶습니다.
+- 사용자가 일정을 작성한 언어와 같은 언어로 답합니다.
+- 마지막 항목 뒤에는 빈 줄을 하나 둡니다.
+
+이제 아래 메모를 일정으로 정리하세요:`,
   },
   en: {
     dashboard: "Dashboard",
@@ -152,6 +211,7 @@ export const translations = {
     slateClean: "Your slate is clean!",
     addTasksTomorrow: "Add tasks for today or tomorrow in Planner.",
     todaysProgress: "Today's Progress",
+    selectedDateProgress: "Selected Day Progress",
     done: "done",
     streak: "Streak",
     dailyInspiration: "Daily Inspiration",
@@ -171,6 +231,14 @@ export const translations = {
     colorGreen: 'Green',
     language: 'Language',
     languageDesc: 'Choose your preferred language.',
+    brandTagline: 'Forge tomorrow tonight.',
+    loadingApp: 'Preparing Morning Star...',
+    checkingLogin: 'Checking your sign-in...',
+    nicknamePlaceholder: 'Enter your name',
+    closeTimeEditor: 'Close time editor',
+    editTime: 'Edit time',
+    removeTime: 'Remove time',
+    addTime: 'Add target time',
     saveSettings: 'Save Settings',
     saving: 'Saving...',
     analyticsConsentTitle: 'Usage analytics',
@@ -262,6 +330,56 @@ export const translations = {
     archiveFiles: 'Files',
     archiveSourceFiles: 'Source files',
     archiveNoTasksForDate: 'No checklist items on this date.',
+    signOut: 'Sign out',
+    closeDialog: 'Close',
+    languageSwitcherLabel: 'Display language',
+    datePickerLabel: 'Choose a date',
+    goToToday: 'Today',
+    previousWeek: 'Previous week',
+    nextWeek: 'Next week',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    currentWeek: 'This week',
+    viewDaySchedule: 'View daily schedule',
+    weeklyOverview: 'Your week',
+    weeklyOverviewDesc: 'Select a date to open its detailed schedule.',
+    noTasksForDay: 'No schedule',
+    taskCountUnit: 'tasks',
+    completedCountUnit: 'done',
+    freqDaySelectPrompt: 'Choose the dates to add',
+    pastDateTitle: 'Past date',
+    taskMovedActivity: 'Schedule moved.',
+    dragToReorder: 'Drag to reorder',
+    deleteTask: 'Delete task',
+    unfinishedPraiseMessages: [
+      'You completed every plan yesterday!',
+      'A fresh day with nothing left behind.',
+      'Yesterday’s goals are all complete!',
+      'Keep that completion streak going today.',
+      'Yesterday’s you did a wonderful job!',
+    ],
+    helpTitle: 'How to use Morning Star',
+    helpStep1Title: 'Plan any date',
+    helpStep1Desc: 'Choose a date in the daily or monthly calendar, then add a task from the input bar.',
+    helpStep2Title: 'See the week clearly',
+    helpStep2Desc: 'Review progress in Weekly view and select a date to open its detailed schedule.',
+    helpStep3Title: 'Build your rhythm',
+    helpStep3Desc: 'Set your wake-up time and theme in Settings, then keep your completion streak going.',
+    aiTaskGeneratorTitle: 'AI task-organizing prompt',
+    copyPrompt: 'Copy',
+    copiedPrompt: 'Copied',
+    aiPromptGuide: '① Copy the prompt → ② Paste it into your AI tool → ③ Add rough notes → ④ Add the organized tasks to Planner',
+    helpStart: 'Got it, let’s begin',
+    aiPromptTemplate: `You are a professional daily planner assistant. Turn the user's notes into a clean, concise markdown task list.
+
+Rules:
+- Output only a markdown checklist, with no introduction or explanation.
+- Every item must use the "- [ ] " format.
+- Group related tasks under a short "## " heading.
+- Reply in the same language the user used for their tasks.
+- End with one blank line after the final item.
+
+Now organize the notes below:`,
   },
   jp: {
     dashboard: "ダッシュボード",
@@ -284,6 +402,7 @@ export const translations = {
     slateClean: "予定はありません！",
     addTasksTomorrow: "プランナーで今日または明日のタスクを追加してください。",
     todaysProgress: "今日の進捗",
+    selectedDateProgress: "選択日の進捗",
     done: "実行",
     streak: "連続達成日数",
     dailyInspiration: "今日の一言",
@@ -303,6 +422,14 @@ export const translations = {
     colorGreen: 'グリーン',
     language: '言語',
     languageDesc: '使用する言語を選択してください。',
+    brandTagline: '今夜、明日を鍛える。',
+    loadingApp: 'Morning Star を準備しています...',
+    checkingLogin: 'ログイン状態を確認しています...',
+    nicknamePlaceholder: '使用する名前を入力してください',
+    closeTimeEditor: '時間編集を閉じる',
+    editTime: '時間を編集',
+    removeTime: '時間を削除',
+    addTime: '目標時間を追加',
     saveSettings: '設定を保存',
     saving: '保存中...',
     analyticsConsentTitle: '利用状況の分析',
@@ -394,8 +521,64 @@ export const translations = {
     archiveFiles: 'ファイル',
     archiveSourceFiles: '元ファイル',
     archiveNoTasksForDate: 'この日にはチェックリスト項目がありません。',
+    signOut: 'ログアウト',
+    closeDialog: '閉じる',
+    languageSwitcherLabel: '表示言語',
+    datePickerLabel: '日付を選択',
+    goToToday: '今日へ',
+    previousWeek: '前の週',
+    nextWeek: '次の週',
+    previousMonth: '前の月',
+    nextMonth: '次の月',
+    currentWeek: '今週',
+    viewDaySchedule: '日別予定を見る',
+    weeklyOverview: '今週の予定',
+    weeklyOverviewDesc: '日付を選ぶと、その日の詳しい予定を確認できます。',
+    noTasksForDay: '予定なし',
+    taskCountUnit: '件',
+    completedCountUnit: '件完了',
+    freqDaySelectPrompt: '追加する日付を選択してください',
+    pastDateTitle: '過去の日付',
+    taskMovedActivity: '予定を移動しました。',
+    dragToReorder: 'ドラッグして並べ替え',
+    deleteTask: '予定を削除',
+    unfinishedPraiseMessages: [
+      '昨日の予定をすべて完了しました！',
+      'やり残しのない軽やかな一日です。',
+      '昨日の目標をすべて達成しました！',
+      '今日も達成の流れを続けましょう。',
+      '昨日のあなたは素晴らしかったです！',
+    ],
+    helpTitle: 'Morning Star の使い方',
+    helpStep1Title: '好きな日付に計画する',
+    helpStep1Desc: '日次または月次カレンダーで日付を選び、下の入力欄から予定を追加します。',
+    helpStep2Title: '一週間を見渡す',
+    helpStep2Desc: '週次画面で進捗を確認し、日付を選ぶとその日の詳細予定へ移動します。',
+    helpStep3Title: '自分のリズムを作る',
+    helpStep3Desc: '設定で起床時間とテーマを選び、連続達成記録を続けましょう。',
+    aiTaskGeneratorTitle: 'AI タスク整理プロンプト',
+    copyPrompt: 'コピー',
+    copiedPrompt: 'コピー済み',
+    aiPromptGuide: '① 上の文をコピー → ② AIツールに貼り付け → ③ メモを追加 → ④ 整理された予定をプランナーへ追加',
+    helpStart: '確認しました。始める',
+    aiPromptTemplate: `あなたはプロのデイリープランナーアシスタントです。ユーザーのメモを簡潔なMarkdownタスクリストに整理してください。
+
+ルール:
+- 導入や説明を付けず、Markdownチェックリストだけを出力します。
+- 各項目は必ず「- [ ] 」形式にします。
+- 関連する予定は短い「## 」見出しの下にまとめます。
+- ユーザーが予定を書いた言語と同じ言語で回答します。
+- 最後の項目の後に空行を1つ入れます。
+
+以下のメモを予定として整理してください:`,
   }
 };
+
+export function localeForLanguage(lang = 'ko') {
+  if (lang === 'en') return 'en-US';
+  if (lang === 'jp') return 'ja-JP';
+  return 'ko-KR';
+}
 
 export function t(lang, key) {
   if (!translations[lang] || !translations[lang][key]) return translations['ko'][key] || key;

@@ -200,3 +200,141 @@
     padding: 28px 22px 24px;
   }
 }
+
+/* Gilded ledger sign-in */
+.login-page {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(230, 181, 80, 0.18), transparent 24%),
+    radial-gradient(circle at 82% 76%, rgba(126, 61, 31, 0.18), transparent 28%),
+    repeating-linear-gradient(8deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 8px),
+    linear-gradient(145deg, #14100f, #261a16 54%, #171112);
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  width: min(70vw, 720px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(231, 184, 88, 0.08);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 42px rgba(231, 184, 88, 0.018), inset 0 0 0 43px rgba(231, 184, 88, 0.055);
+  pointer-events: none;
+}
+
+.login-card {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 30px 32px 28px;
+  border: 1px solid rgba(184, 126, 49, 0.42);
+  border-top: 3px solid #c58b35;
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.72), transparent 38%),
+    #f0e4cf;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.36);
+}
+
+.login-card::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(126, 78, 30, 0.12);
+  border-radius: 9px;
+  pointer-events: none;
+}
+
+.login-brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(101, 67, 34, 0.18);
+}
+
+.login-brand img {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(126, 78, 30, 0.24);
+  border-radius: 11px;
+  box-shadow: 0 8px 20px rgba(85, 51, 24, 0.2);
+}
+
+.login-brand strong,
+.login-brand span {
+  display: block;
+}
+
+.login-brand strong {
+  color: #39271c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.02rem;
+  letter-spacing: 0.035em;
+}
+
+.login-brand span {
+  margin-top: 2px;
+  color: #796553;
+  font-size: 0.7rem;
+}
+
+.login-title {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 18px;
+  color: #2e2119;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+}
+
+.login-fields,
+.login-options,
+.login-submit,
+.login-links,
+.login-message {
+  position: relative;
+  z-index: 1;
+}
+
+.login-input {
+  border-color: rgba(96, 66, 38, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 252, 244, 0.78);
+  color: #2e2119;
+}
+
+.login-input:focus {
+  border-color: #a8732d;
+  box-shadow: 0 0 0 3px rgba(168, 115, 45, 0.14);
+}
+
+.login-submit {
+  border-color: #3c281c;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #4b3221, #251b17);
+  box-shadow: 0 8px 18px rgba(53, 32, 20, 0.2);
+}
+
+.login-submit:hover:not(:disabled),
+.login-submit:focus-visible:not(:disabled) {
+  background: linear-gradient(135deg, #624127, #31221b);
+}
+
+.login-remember input {
+  accent-color: #8f6028;
+}
+
+@media (max-width: 520px) {
+  .login-page {
+    padding: 20px 14px;
+  }
+
+  .login-card {
+    padding: 26px 20px 24px;
+  }
+}

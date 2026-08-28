@@ -38,6 +38,15 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashItems, setTrashItems] = useState([]);
 
+  useEffect(() => {
+    if (!configSnapshot?.language) return;
+    setConfig((currentConfig) => (
+      currentConfig.language === configSnapshot.language
+        ? currentConfig
+        : { ...currentConfig, language: configSnapshot.language }
+    ));
+  }, [configSnapshot?.language]);
+
   const loadTrash = useCallback(async () => {
     try {
       const trashFiles = await api.readTrashFiles();
@@ -206,7 +215,7 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
               onChange={(e) => setNickname(e.target.value)}
               className="theme-select"
               style={{ backgroundImage: 'none' }}
-              placeholder="Enter Nickname"
+              placeholder={t(lang, 'nicknamePlaceholder')}
               required
             />
           </div>
@@ -228,7 +237,7 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
                         type="button"
                         className={`time-icon-btn ${isEditing ? 'active' : ''}`}
                         onClick={() => handleClockClick(idx)}
-                        title={isEditing ? 'Close editor' : 'Click to edit time'}
+                        title={t(lang, isEditing ? 'closeTimeEditor' : 'editTime')}
                       >
                         <Clock size={17} className="time-icon" />
                       </button>
@@ -285,7 +294,7 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
                         type="button"
                         className="icon-btn remove-btn"
                         onClick={() => handleRemoveTime(idx)}
-                        title="Remove Time"
+                        title={t(lang, 'removeTime')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -295,7 +304,7 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
                       <button
                         type="button"
                         className="btn btn-outline-primary add-time-btn"
-                        title="Add Target Time"
+                        title={t(lang, 'addTime')}
                         onClick={handleAddTime}
                       >
                         <Plus size={14} />

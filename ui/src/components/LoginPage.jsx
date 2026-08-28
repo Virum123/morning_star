@@ -10,6 +10,7 @@ import {
   getRememberLoginPreference,
   setRememberLoginPreference,
 } from "../lib/supabaseClient";
+import morningStarIcon from "../assets/morning_star_app_icon.png";
 import "./LoginPage.css";
 
 export default function LoginPage({
@@ -98,6 +99,13 @@ export default function LoginPage({
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
+        <div className="login-brand">
+          <img src={morningStarIcon} alt="" />
+          <div>
+            <strong>Morning Star</strong>
+            <span>오늘 밤, 내일을 벼리다</span>
+          </div>
+        </div>
         <h2 className="login-title">
           {isResetPassword ? "비밀번호 재설정" : isSignIn ? "로그인" : "회원가입"}
         </h2>

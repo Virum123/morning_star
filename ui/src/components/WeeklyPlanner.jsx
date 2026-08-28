@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { GripVertical, Star, Plus, X, Trash2 } from 'lucide-react';
-import { localDateStr, appTodayDate } from '../utils/date';
+import { GripVertical, Star, Plus, X, Trash2, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { localDateStr, appTodayDate, startOfLocalWeek } from '../utils/date';
 import {
   createSchedule,
   getFrequentSchedules,
@@ -8,11 +8,22 @@ import {
   saveFrequentSchedules,
   updateSchedule,
 } from '../services/scheduleService';
-import { t } from '../utils/i18n';
+import { localeForLanguage, t } from '../utils/i18n';
 import { getDateBucket, getFilesForDate as getPlannerFilesForDate, parseChecklist } from '../utils/plannerData';
 import './Planner.css';
 
-export default function WeeklyPlanner({ filesData, setFilesData, loading, lang = 'ko', loadContent, silentRefresh, freqTrigger = 0 }) {
+export default function WeeklyPlanner({
+  filesData,
+  setFilesData,
+  loading,
+  lang = 'ko',
+  loadContent,
+  silentRefresh,
+  freqTrigger = 0,
+  onJumpToDaily,
+  weekOffset = 0,
+  setWeekOffset,
+}) {
   const [dragItem, setDragItem] = useState(null);
   const [dragOverDay, setDragOverDay] = useState(null);
 
@@ -23,6 +34,25 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
   const [selectedDays, setSelectedDays] = useState(new Set());
   const [newFreqTaskText, setNewFreqTaskText] = useState('');
   const handledFreqTriggerRef = useRef(freqTrigger);
+  const freqCloseRef = useRef(null);
+
+  useEffect(() => {
+    if (!showFreqModal) return undefined;
+    const previousFocus = document.activeElement;
+    freqCloseRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowFreqModal(false);
+        setSelectedFreqIds(new Set());
+        setSelectedDays(new Set());
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [showFreqModal]);
 
   const todayDate = appTodayDate();
   const todayStr = localDateStr(todayDate);
@@ -31,8 +61,14 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
   const tomorrowStr = localDateStr(tomorrowDate);
   const dateContext = { todayStr, tomorrowStr };
 
-  const monday = new Date(todayDate);
-  monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7));
+  const monday = startOfLocalWeek(todayDate);
+  monday.setDate(monday.getDate() + weekOffset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const locale = localeForLanguage(lang);
+  const rangeFormatter = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'short' });
+  const weekRangeLabel = `${rangeFormatter.format(monday)} — ${rangeFormatter.format(sunday)}`;
 
   const getFilesForDate = (dateStr) => {
     return getPlannerFilesForDate(dateStr, filesData, dateContext);
@@ -48,6 +84,11 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
       const { items } = parseChecklist(file.content);
       return { file, fileIndex, items };
     });
+    const taskCount = tasksByFile.reduce((total, group) => total + group.items.length, 0);
+    const completedCount = tasksByFile.reduce(
+      (total, group) => total + group.items.filter((item) => item.checked).length,
+      0,
+    );
 
     let topLabel = '';
     if (dateStr === todayStr) topLabel = t(lang, 'todayLabel');
@@ -63,15 +104,22 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
       dateStr,
       dayName: t(lang, 'shortDays')[i],
       dayNum: d.getDate(),
+      monthLabel: monthFormatter.format(d),
       isToday: dateStr === todayStr,
       isPast: dateStr < todayStr,
       tasksByFile,
+      taskCount,
+      completedCount,
       topLabel,
     };
   });
 
   // --- Drag handlers ---
   const handleDragStart = (e, dateStr, fileIndex, lineIndex, text, checked) => {
+    if (dateStr < todayStr) {
+      e.preventDefault();
+      return;
+    }
     setDragItem({ dateStr, fileIndex, lineIndex, text, checked });
     e.dataTransfer.effectAllowed = 'move';
     setTimeout(() => e.target.classList.add('dragging'), 0);
@@ -84,6 +132,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
   };
 
   const handleDragOverDay = (e, dateStr) => {
+    if (dateStr < todayStr) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverDay(dateStr);
@@ -93,7 +142,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
     e.preventDefault();
     setDragOverDay(null);
 
-    if (!dragItem) return;
+    if (!dragItem || targetDateStr < todayStr) return;
     if (dragItem.dateStr === targetDateStr) {
       setDragItem(null);
       return;
@@ -162,18 +211,23 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
     setDragItem(null);
 
     // Persist to server
-    await updateSchedule({ filepath: srcFile.path, content: newSrcContent });
-    if (tgtFile) {
-      await updateSchedule({ filepath: tgtFile.path, content: newTgtContent });
-    } else {
-      await createSchedule({ taskLine: newTaskLine, targetDate: targetDateStr });
-      silentRefresh?.();
+    try {
+      if (tgtFile) {
+        await updateSchedule({ filepath: tgtFile.path, content: newTgtContent });
+      } else {
+        await createSchedule({ taskLine: newTaskLine, targetDate: targetDateStr });
+      }
+      await updateSchedule({ filepath: srcFile.path, content: newSrcContent });
+      await recordScheduleActivity(
+        'task_moved',
+        `${dragItem.dateStr} → ${targetDateStr} · ${t(lang, 'taskMovedActivity')}`,
+        { source_date: dragItem.dateStr, target_date: targetDateStr, task_text: dragItem.text },
+      );
+    } catch (error) {
+      console.error('Failed to move schedule item.', error);
+    } finally {
+      await silentRefresh?.();
     }
-    await recordScheduleActivity(
-      'task_moved',
-      `${dragItem.dateStr}에서 ${targetDateStr}로 일정을 이동했습니다.`,
-      { source_date: dragItem.dateStr, target_date: targetDateStr, task_text: dragItem.text },
-    );
   };
 
   const toggleFreqTask = (idx) => {
@@ -312,37 +366,90 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
 
   return (
     <div className="weekly-planner-wrapper">
+      <div className="weekly-planner-topbar">
+        <div className="weekly-heading-group">
+          <span className="weekly-kicker">{t(lang, 'weeklyOverview')}</span>
+          <h2>{weekRangeLabel}</h2>
+          <p>{t(lang, 'weeklyOverviewDesc')}</p>
+        </div>
+        <div className="weekly-navigation" aria-label={t(lang, 'weekly')}>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setWeekOffset((currentOffset) => currentOffset - 7)}
+            aria-label={t(lang, 'previousWeek')}
+            title={t(lang, 'previousWeek')}
+          >
+            <ChevronLeft size={17} />
+          </button>
+          <button
+            type="button"
+            className={`current-week-btn ${weekOffset === 0 ? 'active' : ''}`}
+            onClick={() => setWeekOffset(0)}
+          >
+            <CalendarDays size={14} />
+            {t(lang, 'currentWeek')}
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setWeekOffset((currentOffset) => currentOffset + 7)}
+            aria-label={t(lang, 'nextWeek')}
+            title={t(lang, 'nextWeek')}
+          >
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      </div>
+
       <div className="weekly-planner-container">
         {weekDays.map(day => (
           <div
             key={day.dateStr}
-            className={`weekly-day-col glass-card ${day.isToday ? 'today-col' : ''} ${dragOverDay === day.dateStr ? 'drag-over-day' : ''}`}
+            className={`weekly-day-col glass-card ${day.isToday ? 'today-col' : ''} ${day.isPast ? 'past-col' : ''} ${dragOverDay === day.dateStr ? 'drag-over-day' : ''}`}
             onDragOver={(e) => handleDragOverDay(e, day.dateStr)}
             onDragLeave={() => setDragOverDay(null)}
             onDrop={(e) => handleDropOnDay(e, day.dateStr)}
           >
-            <div className="weekly-day-header">
-              <span className="w-day-name">
-                {day.topLabel
-                  ? <strong style={{ color: 'var(--accent-color)' }}>{day.topLabel}</strong>
-                  : day.dayName}
+            <button
+              type="button"
+              className="weekly-day-header"
+              onClick={() => onJumpToDaily?.(day.dateStr)}
+              aria-label={`${day.dateStr} · ${t(lang, 'viewDaySchedule')}`}
+              aria-current={day.isToday ? 'date' : undefined}
+            >
+              <span className="weekly-day-title-row">
+                <span className="w-day-name">{day.dayName}</span>
+                <span className="w-day-context">{day.topLabel || day.monthLabel}</span>
               </span>
-              <span className="w-day-num">{day.dayNum}</span>
-            </div>
+              <span className="weekly-day-date-row">
+                <span className="w-day-num">{day.dayNum}</span>
+                <span className="weekly-day-count">
+                  {day.completedCount}/{day.taskCount} {t(lang, 'completedCountUnit')}
+                </span>
+              </span>
+              <span className="weekly-progress-track" aria-hidden="true">
+                <span
+                  className="weekly-progress-value"
+                  style={{ width: `${day.taskCount > 0 ? Math.round((day.completedCount / day.taskCount) * 100) : 0}%` }}
+                />
+              </span>
+            </button>
             <div className="weekly-task-list">
               {day.tasksByFile.every(tf => tf.items.length === 0) ? (
-                <div className="w-empty">{t(lang, 'noTasks')}</div>
+                <div className="w-empty">{t(lang, 'noTasksForDay')}</div>
               ) : (
                 day.tasksByFile.map(({ fileIndex, items }) =>
                   items.map((task, idx) => (
                     <div
                       key={`${fileIndex}-${idx}`}
                       className={`weekly-task-item ${task.checked ? 'checked' : ''}`}
-                      draggable
+                      draggable={!day.isPast}
                       onDragStart={(e) => handleDragStart(e, day.dateStr, fileIndex, task.lineIndex, task.text, task.checked)}
                       onDragEnd={handleDragEnd}
                     >
-                      <GripVertical size={13} className="weekly-grip" style={{ flexShrink: 0, opacity: 0.4 }} />
+                      {!day.isPast && <GripVertical size={13} className="weekly-grip" />}
+                      <span className="weekly-task-dot" aria-hidden="true" />
                       <span className="task-text">{task.text}</span>
                     </div>
                   ))
@@ -356,10 +463,10 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
       {/* Frequent Tasks Modal */}
       {showFreqModal && (
         <div className="freq-modal-overlay" onClick={closeFreqModal}>
-          <div className="freq-modal freq-modal-weekly" onClick={e => e.stopPropagation()}>
+          <div className="freq-modal freq-modal-weekly" role="dialog" aria-modal="true" aria-labelledby="weekly-freq-modal-title" onClick={e => e.stopPropagation()}>
             <div className="freq-modal-header">
-              <h3><Star size={16} style={{ marginRight: 6 }} />{t(lang, 'frequentTasks')}</h3>
-              <button className="icon-btn" onClick={closeFreqModal}><X size={20} /></button>
+              <h3 id="weekly-freq-modal-title"><Star size={16} style={{ marginRight: 6 }} />{t(lang, 'frequentTasks')}</h3>
+              <button ref={freqCloseRef} type="button" className="icon-btn" onClick={closeFreqModal} aria-label={t(lang, 'closeDialog')}><X size={20} /></button>
             </div>
 
             {renderFreqBulkToolbar()}
@@ -407,7 +514,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
 
             {/* Day selector */}
             <div className="freq-day-selector">
-              <p className="freq-day-label">추가할 요일을 선택하세요</p>
+              <p className="freq-day-label">{t(lang, 'freqDaySelectPrompt')}</p>
               <div className="freq-day-buttons">
                 {weekDays.map(day => (
                   <button
@@ -415,7 +522,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
                     className={`freq-day-btn ${selectedDays.has(day.dateStr) ? 'selected' : ''} ${day.isPast ? 'disabled' : ''}`}
                     onClick={() => { if (!day.isPast) toggleDay(day.dateStr); }}
                     disabled={day.isPast}
-                    title={day.isPast ? '지난 날짜' : day.dateStr}
+                    title={day.isPast ? t(lang, 'pastDateTitle') : day.dateStr}
                   >
                     {day.dayName}
                     {day.isToday && <span className="freq-day-dot" />}
@@ -440,7 +547,7 @@ export default function WeeklyPlanner({ filesData, setFilesData, loading, lang =
                 disabled={selectedFreqIds.size === 0 || selectedDays.size === 0}
               >
                 {t(lang, 'freqAddToWeek')}
-                {selectedFreqIds.size > 0 && selectedDays.size > 0 ? ` (${selectedFreqIds.size}건 × ${selectedDays.size}일)` : ''}
+                {selectedFreqIds.size > 0 && selectedDays.size > 0 ? ` (${selectedFreqIds.size} × ${selectedDays.size})` : ''}
               </button>
             </div>
           </div>

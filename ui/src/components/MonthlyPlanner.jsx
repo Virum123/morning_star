@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { t } from '../utils/i18n';
+import { localeForLanguage, t } from '../utils/i18n';
 import { appTodayDate, localDateStr } from '../utils/date';
 import { getFilesForDate, parseChecklist } from '../utils/plannerData';
 import './Planner.css';
 
 export default function MonthlyPlanner({ filesData, loading, fireDays, lang = 'ko', onJumpToDaily }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => appTodayDate());
 
   const todayDate = appTodayDate();
   const todayStr = localDateStr(todayDate);
@@ -68,6 +68,11 @@ export default function MonthlyPlanner({ filesData, loading, fireDays, lang = 'k
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
 
+  const monthLabel = new Intl.DateTimeFormat(localeForLanguage(lang), {
+    year: 'numeric',
+    month: 'long',
+  }).format(currentMonth);
+
   if (loading) {
     return <div className="skeleton-loader" style={{ padding: '20px' }}>{t(lang, 'loadingTasks')}</div>;
   }
@@ -75,39 +80,43 @@ export default function MonthlyPlanner({ filesData, loading, fireDays, lang = 'k
   return (
     <div className="monthly-planner-container glass-card">
       <div className="monthly-header">
-        <button className="icon-btn" onClick={prevMonth}><ChevronLeft size={20} /></button>
-        <h2>{currentMonth.getFullYear()} - {t(lang, 'monthNames')[currentMonth.getMonth()]}</h2>
-        <button className="icon-btn" onClick={nextMonth}><ChevronRight size={20} /></button>
+        <button type="button" className="icon-btn" onClick={prevMonth} aria-label={t(lang, 'previousMonth')}><ChevronLeft size={20} /></button>
+        <h2>{monthLabel}</h2>
+        <button type="button" className="icon-btn" onClick={nextMonth} aria-label={t(lang, 'nextMonth')}><ChevronRight size={20} /></button>
       </div>
       
-      <div className="monthly-grid">
-        {t(lang, 'shortDays').map(day => (
-          <div key={day} className="m-day-header">{day}</div>
-        ))}
-        
-        {calendarDays.map((day, idx) => (
-          <div 
-            key={idx} 
-            className={`m-day-cell ${day.isCurrentMonth ? '' : 'other-month'} ${day.isToday ? 'today' : ''}`}
-            onClick={() => onJumpToDaily && onJumpToDaily(day.dateStr)}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="m-date-num">
-              {day.dateObj.getDate()}
-              {day.isFire && <span className="m-fire-dot">🔥</span>}
-            </div>
-            <div className="m-task-preview">
-              {day.tasks.slice(0, 3).map((t, i) => (
-                <div key={i} className={`m-preview-item ${t.checked ? 'checked' : ''}`}>
-                  {t.text}
-                </div>
-              ))}
-              {day.tasks.length > 3 && (
-                <div className="m-preview-more">+{day.tasks.length - 3} {t(lang, 'moreLabel')}</div>
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="monthly-grid-scroll">
+        <div className="monthly-grid">
+          {t(lang, 'shortDays').map(day => (
+            <div key={day} className="m-day-header">{day}</div>
+          ))}
+
+          {calendarDays.map((day) => (
+            <button
+              type="button"
+              key={day.dateStr}
+              className={`m-day-cell ${day.isCurrentMonth ? '' : 'other-month'} ${day.isToday ? 'today' : ''}`}
+              onClick={() => onJumpToDaily && onJumpToDaily(day.dateStr)}
+              aria-label={`${day.dateStr} · ${t(lang, 'viewDaySchedule')}`}
+              aria-current={day.isToday ? 'date' : undefined}
+            >
+              <span className="m-date-num">
+                {day.dateObj.getDate()}
+                {day.isFire && <span className="m-fire-dot">🔥</span>}
+              </span>
+              <span className="m-task-preview">
+                {day.tasks.slice(0, 3).map((task, i) => (
+                  <span key={i} className={`m-preview-item ${task.checked ? 'checked' : ''}`}>
+                    {task.text}
+                  </span>
+                ))}
+                {day.tasks.length > 3 && (
+                  <span className="m-preview-more">+{day.tasks.length - 3} {t(lang, 'moreLabel')}</span>
+                )}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
