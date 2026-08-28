@@ -54,6 +54,24 @@ export async function getSchedules() {
   return data || [];
 }
 
+export async function getDeletedSchedules() {
+  const user = await requireCurrentUser();
+
+  const { data, error } = await supabase
+    .from(TABLE_NAME)
+    .select('*')
+    .eq('user_id', user.id)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to load deleted schedules from Supabase:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
 export async function createSchedule(input = {}) {
   const user = await requireCurrentUser();
   const payload = compactSchedulePayload(input);
@@ -110,10 +128,27 @@ export async function updateSchedule(id, patch = {}) {
   return data;
 }
 
-export async function deleteSchedule(id) {
+export async function deleteSchedule(id, { showInTrash = true } = {}) {
   const user = await requireCurrentUser();
   if (!id) {
     throw new Error('삭제할 일정 id가 필요합니다.');
+  }
+
+  if (!showInTrash) {
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Failed to permanently delete schedule from Supabase:', error);
+      throw error;
+    }
+
+    return data;
   }
 
   const { data, error } = await supabase
@@ -130,4 +165,43 @@ export async function deleteSchedule(id) {
   }
 
   return data;
+}
+
+export async function restoreSchedule(id) {
+  const user = await requireCurrentUser();
+  if (!id) {
+    throw new Error('복원할 일정 id가 필요합니다.');
+  }
+
+  const { data, error } = await supabase
+    .from(TABLE_NAME)
+    .update({ deleted_at: null })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to restore schedule in Supabase:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function emptyDeletedSchedules() {
+  const user = await requireCurrentUser();
+
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .delete()
+    .eq('user_id', user.id)
+    .not('deleted_at', 'is', null);
+
+  if (error) {
+    console.error('Failed to permanently delete schedules from Supabase:', error);
+    throw error;
+  }
+
+  return { success: true };
 }

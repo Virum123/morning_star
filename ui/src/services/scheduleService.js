@@ -213,7 +213,7 @@ async function persistPlannerFileContent(filepath, content) {
 
   for (let index = nextTasks.length; index < existingRows.length; index += 1) {
     if (existingRows[index]?.id) {
-      await deleteSupabaseSchedule(existingRows[index].id);
+      await deleteSupabaseSchedule(existingRows[index].id, { showInTrash: false });
     }
   }
 

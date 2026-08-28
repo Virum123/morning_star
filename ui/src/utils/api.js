@@ -1,4 +1,51 @@
-const isDev = () => !window.pywebview;
+import { getCurrentUser } from '../services/authService';
+import {
+  emptyDeletedSchedules,
+  getDeletedSchedules,
+  restoreSchedule,
+} from '../repositories/supabaseScheduleRepository';
+
+const usesWebFallback = () => !window.pywebview?.api;
+const WEB_STORAGE_NAMESPACE = 'morning-star.web';
+
+const getDefaultWebConfig = () => ({
+  target_times: ['06:00'],
+  themeMode: 'light',
+  colorTheme: 'default',
+  language: 'ko',
+  nickname: 'Alex',
+  files: {
+    tomorrow: [],
+    today: [],
+    byDate: {},
+    yesterday: {},
+    trash: [],
+  },
+  activity_log: [],
+  migrated_unfinished_tasks: [],
+  triggered_times_today: [],
+});
+
+async function getWebStorageKey(name) {
+  const user = await getCurrentUser();
+  return `${WEB_STORAGE_NAMESPACE}.${user?.id || 'anonymous'}.${name}`;
+}
+
+async function readWebStorage(name, fallbackValue) {
+  try {
+    const storageKey = await getWebStorageKey(name);
+    const rawValue = localStorage.getItem(storageKey);
+    return rawValue ? JSON.parse(rawValue) : fallbackValue;
+  } catch {
+    return fallbackValue;
+  }
+}
+
+async function writeWebStorage(name, value) {
+  const storageKey = await getWebStorageKey(name);
+  localStorage.setItem(storageKey, JSON.stringify(value));
+  return value;
+}
 
 const mockByDate = {
   '2026-02-16': [
@@ -19,53 +66,28 @@ const mockByDate = {
   ],
 };
 
-const mockActivityLog = [
-  {
-    timestamp: '2026-02-17 08:30:00',
-    action: 'unfinished_task_copied',
-    message: "'회고 작성' 일정을 오늘로 옮겼습니다.",
-    details: { source_date: '2026-02-16' },
-  },
-  {
-    timestamp: '2026-02-17 06:02:00',
-    action: 'date_promotion',
-    message: '날짜별 예정 일정을 오늘/내일 화면으로 옮겼습니다.',
-    details: { tomorrow: 1 },
-  },
-];
-
 export const api = {
   getConfig: async () => {
-    if (isDev()) {
-      return {
-        target_times: ["06:00", "07:30"],
-        theme: "light",
-        nickname: "Alex",
-        files: {
-          tomorrow: [],
-          today: [],
-          byDate: mockByDate,
-          yesterday: mockByDate,
-          trash: [],
-        },
-        activity_log: mockActivityLog,
-        migrated_unfinished_tasks: [],
-        last_display_date: "2026-02-17",
-        triggered_times_today: []
-      };
+    if (usesWebFallback()) {
+      const defaultConfig = getDefaultWebConfig();
+      const storedConfig = await readWebStorage('config', {});
+      return { ...defaultConfig, ...storedConfig };
     }
     return window.pywebview.api.get_config();
   },
   
   saveConfig: async (config) => {
-    if (isDev()) {
-      return { success: true };
+    if (usesWebFallback()) {
+      const currentConfig = await readWebStorage('config', {});
+      const nextConfig = { ...currentConfig, ...config };
+      await writeWebStorage('config', nextConfig);
+      return { success: true, config: nextConfig };
     }
     return window.pywebview.api.save_config(config);
   },
 
   readAllFiles: async () => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return {
         tomorrow: [],
         today: [
@@ -97,41 +119,43 @@ export const api = {
   },
 
   readActivityLog: async () => {
-    if (isDev()) {
-      return mockActivityLog;
+    if (usesWebFallback()) {
+      return readWebStorage('activity-log', []);
     }
     return window.pywebview.api.read_activity_log();
   },
 
   recordActivity: async (action, message, details = {}) => {
-    if (isDev()) {
-      mockActivityLog.unshift({
+    if (usesWebFallback()) {
+      const activityLog = await readWebStorage('activity-log', []);
+      const nextActivityLog = [{
         timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
         action,
         message,
         details,
-      });
-      return { success: true, activity_log: mockActivityLog };
+      }, ...activityLog].slice(0, 120);
+      await writeWebStorage('activity-log', nextActivityLog);
+      return { success: true, activity_log: nextActivityLog };
     }
     return window.pywebview.api.record_activity(action, message, details);
   },
 
   addFileDialog: async (target) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return { tomorrow: [], today: [], byDate: mockByDate, yesterday: mockByDate };
     }
     return window.pywebview.api.add_file_dialog(target);
   },
   
   processDroppedContent: async (target, filesData) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return await api.getConfig();
     }
     return window.pywebview.api.process_dropped_content(target, filesData);
   },
 
   updateFileContent: async (filepath, content, options = {}) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return {
         success: true,
         content: options.normalizeTasks ? content : content,
@@ -141,84 +165,86 @@ export const api = {
   },
 
   removeFile: async (target, pathToRemove, dateKey = null) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return await api.getConfig();
     }
     return window.pywebview.api.remove_file(target, pathToRemove, dateKey);
   },
 
   emptyTrash: async () => {
-    if (isDev()) {
-      return { success: true };
+    if (usesWebFallback()) {
+      return emptyDeletedSchedules();
     }
     return window.pywebview.api.empty_trash();
   },
 
   restoreTrash: async (pathToRestore) => {
-    if (isDev()) {
-      return { success: true };
+    if (usesWebFallback()) {
+      return restoreSchedule(pathToRestore);
     }
     return window.pywebview.api.restore_trash(pathToRestore);
   },
 
   readTrashFiles: async () => {
-    if (isDev()) {
-      return [
-        {
-          filename: 'trash_20260217120000_old_task.md',
-          path: '/mock/trash_20260217120000_old_task.md',
-          added_date: '2026-02-17 12:00:00',
-          content: '- [ ] 더 이상 필요 없는 일정',
-        },
-      ];
+    if (usesWebFallback()) {
+      const deletedSchedules = await getDeletedSchedules();
+      return deletedSchedules.map((schedule) => ({
+        filename: schedule.title,
+        path: schedule.id,
+        added_date: schedule.deleted_at,
+        content: schedule.title,
+        original_text: schedule.title,
+      }));
     }
     return window.pywebview.api.read_trash_files();
   },
 
   trashTask: async (taskText, originalFilename) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return { success: true };
     }
     return window.pywebview.api.trash_task(taskText, originalFilename || 'deleted_task');
   },
 
   getFrequentTasks: async () => {
-    if (isDev()) {
-      return ['아침 루틴 체크', '이메일 확인', '운동'];
+    if (usesWebFallback()) {
+      return readWebStorage('frequent-tasks', []);
     }
     return window.pywebview.api.get_frequent_tasks();
   },
 
   saveFrequentTasks: async (tasks) => {
-    if (isDev()) {
-      return { success: true };
+    if (usesWebFallback()) {
+      const nextTasks = Array.isArray(tasks) ? tasks : [];
+      await writeWebStorage('frequent-tasks', nextTasks);
+      return { success: true, frequent_tasks: nextTasks };
     }
     return window.pywebview.api.save_frequent_tasks(tasks);
   },
 
   addTaskToDate: async (taskLine, targetDate) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return { success: true };
     }
     return window.pywebview.api.add_task_to_date(taskLine, targetDate);
   },
 
   migrateUnfinishedTask: async ({ sourcePath, sourceDate, lineIndex, taskText }) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return { success: true };
     }
     return window.pywebview.api.migrate_unfinished_task(sourcePath, sourceDate, lineIndex, taskText);
   },
 
   addFrequentTasksToDay: async (tasks, targetDate) => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return { success: true };
     }
     return window.pywebview.api.add_frequent_tasks_to_day(tasks, targetDate);
   },
 
   closeWindow: () => {
-    if (isDev()) {
+    if (usesWebFallback()) {
       return;
     } else {
       window.pywebview.api.close();

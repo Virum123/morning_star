@@ -33,6 +33,34 @@ export async function signIn(email, password) {
 }
 
 /**
+ * 비밀번호 재설정 메일 발송
+ */
+export async function requestPasswordReset(email) {
+  const isWebUrl = ["http:", "https:"].includes(window.location.protocol);
+  const options = isWebUrl
+    ? { redirectTo: `${window.location.origin}${window.location.pathname}` }
+    : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, options);
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * 비밀번호 재설정 링크로 인증된 사용자의 비밀번호 변경
+ */
+export async function updatePassword(password) {
+  const { data, error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * 로그아웃
  */
 export async function signOut() {
@@ -73,8 +101,8 @@ export async function getCurrentUser() {
  * 로그인 상태 변화 감지
  */
 export function onAuthStateChange(callback) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user ?? null, event);
   });
 
   return data.subscription;

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard } from 'lucide-react';
+import { FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard, LogOut } from 'lucide-react';
 import { api } from './utils/api';
 import { trackEvent, setAnalyticsUser } from './utils/analytics';
 import { t } from './utils/i18n';
 import './App.css';
 import { DYNSUN } from './utils/suns';
-import { getCurrentUser, onAuthStateChange } from './services/authService';
+import { getCurrentUser, onAuthStateChange, signOut } from './services/authService';
 import LoginPage from './components/LoginPage';
 import AuthDebugBanner from './components/AuthDebugBanner';
 
@@ -531,6 +531,8 @@ function applyThemeMode(themeMode, colorTheme, date = new Date()) {
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const currentUserId = currentUser?.id || null;
 
   useEffect(() => {
     let isMounted = true;
@@ -553,9 +555,14 @@ function App() {
         }
       });
 
-    const subscription = onAuthStateChange((user) => {
+    const subscription = onAuthStateChange((user, event) => {
       if (isMounted) {
         setCurrentUser(user);
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        } else if (event === 'SIGNED_OUT') {
+          setIsPasswordRecovery(false);
+        }
       }
     });
 
@@ -664,6 +671,8 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (isAuthChecking || !currentUserId) return undefined;
+
     let poll;
     let isMounted = true;
     let initDone = false;
@@ -685,7 +694,10 @@ function App() {
       }
     };
 
-    if (window.pywebview) {
+    const isBrowserRuntime = import.meta.env.PROD
+      && ['http:', 'https:'].includes(window.location.protocol);
+
+    if (window.pywebview || isBrowserRuntime) {
       initApp();
     } else {
       let attempts = 0;
@@ -730,7 +742,7 @@ function App() {
       window.removeEventListener('focus', handleResume);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshFromHost, refreshActiveTabData]);
+  }, [currentUserId, isAuthChecking, refreshFromHost, refreshActiveTabData]);
 
   useEffect(() => {
     syncThemeMode(themeMode, colorTheme, { force: true });
@@ -796,6 +808,14 @@ function App() {
 
   const handleDragOver = (e) => e.preventDefault();
   const handleDrop = (e) => e.preventDefault();
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+    }
+  };
 
   const navItems = [
     { id: 'planner', icon: <LayoutDashboard size={18} />, label: t(lang, 'planner') || 'Planner' },
@@ -806,8 +826,20 @@ function App() {
   if (isAuthChecking) {
     return (
       <>
-        <AuthDebugBanner />
+        {import.meta.env.DEV && <AuthDebugBanner />}
         <div style={{ padding: '24px' }}>로그인 상태 확인 중...</div>
+      </>
+    );
+  }
+
+  if (isPasswordRecovery) {
+    return (
+      <>
+        {import.meta.env.DEV && <AuthDebugBanner />}
+        <LoginPage
+          isPasswordRecovery
+          onPasswordRecoveryComplete={() => setIsPasswordRecovery(false)}
+        />
       </>
     );
   }
@@ -815,7 +847,7 @@ function App() {
   if (!currentUser) {
     return (
       <>
-        <AuthDebugBanner />
+        {import.meta.env.DEV && <AuthDebugBanner />}
         <LoginPage
           onAuthSuccess={async () => {
             try {
@@ -833,7 +865,7 @@ function App() {
 
   return (
     <div className="app-container" onDragOver={handleDragOver} onDrop={handleDrop}>
-      <AuthDebugBanner />
+      {import.meta.env.DEV && <AuthDebugBanner />}
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -879,6 +911,11 @@ function App() {
           >
             <HelpCircle size={18} />
             <span>{t(lang, 'howToUse')}</span>
+          </div>
+
+          <div className="nav-item" onClick={handleSignOut}>
+            <LogOut size={18} />
+            <span>{lang === 'ko' ? '로그아웃' : 'Sign out'}</span>
           </div>
         </nav>
       </aside>

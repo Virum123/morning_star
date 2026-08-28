@@ -1,15 +1,34 @@
 import { useState } from "react";
-import { signIn, signUp } from "../services/authService";
+import { Eye, EyeOff } from "lucide-react";
+import {
+  requestPasswordReset,
+  signIn,
+  signUp,
+  updatePassword,
+} from "../services/authService";
+import {
+  getRememberLoginPreference,
+  setRememberLoginPreference,
+} from "../lib/supabaseClient";
+import "./LoginPage.css";
 
-export default function LoginPage({ onAuthSuccess }) {
-  const [mode, setMode] = useState("signIn");
+export default function LoginPage({
+  isPasswordRecovery = false,
+  onAuthSuccess,
+  onPasswordRecoveryComplete,
+}) {
+  const [mode, setMode] = useState(isPasswordRecovery ? "resetPassword" : "signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(getRememberLoginPreference);
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const isSignIn = mode === "signIn";
+  const isResetPassword = mode === "resetPassword";
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -18,15 +37,27 @@ export default function LoginPage({ onAuthSuccess }) {
     setMessage("");
 
     try {
-      if (isSignIn) {
+      if (isResetPassword) {
+        if (password !== passwordConfirm) {
+          throw new Error("비밀번호가 일치하지 않습니다.");
+        }
+
+        await updatePassword(password);
+        setMessage("비밀번호가 변경되었습니다.");
+        onPasswordRecoveryComplete?.();
+      } else if (isSignIn) {
+        setRememberLoginPreference(rememberLogin);
         await signIn(email, password);
         setMessage("로그인 성공");
       } else {
+        setRememberLoginPreference(rememberLogin);
         await signUp(email, password);
         setMessage("회원가입 성공. 이메일 확인 설정에 따라 로그인이 필요할 수 있습니다.");
       }
 
-      onAuthSuccess?.();
+      if (!isResetPassword) {
+        onAuthSuccess?.();
+      }
     } catch (error) {
       setMessage(error.message ?? "인증 처리 중 오류가 발생했습니다.");
     } finally {
@@ -34,109 +65,147 @@ export default function LoginPage({ onAuthSuccess }) {
     }
   }
 
+  async function handlePasswordResetRequest() {
+    if (!email.trim()) {
+      setMessage("비밀번호를 찾으려면 이메일을 먼저 입력해 주세요.");
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      await requestPasswordReset(email.trim());
+      setMessage("비밀번호 재설정 메일을 보냈습니다. 받은 편지함을 확인해 주세요.");
+    } catch (error) {
+      setMessage(error.message ?? "재설정 메일을 보내지 못했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function changeMode(nextMode) {
+    setMode(nextMode);
+    setPassword("");
+    setPasswordConfirm("");
+    setMessage("");
+  }
+
+  function handleFindEmail() {
+    setMessage("이메일 찾기는 본인 확인 수단을 추가한 뒤 제공할 수 있습니다.");
+  }
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#111",
-        color: "#fff",
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          width: "360px",
-          padding: "24px",
-          border: "1px solid #333",
-          borderRadius: "12px",
-          background: "#1b1b1b",
-        }}
-      >
-        <h2 style={{ marginBottom: "16px" }}>
-          {isSignIn ? "로그인" : "회원가입"}
+    <div className="login-page">
+      <form className="login-card" onSubmit={handleSubmit}>
+        <h2 className="login-title">
+          {isResetPassword ? "비밀번호 재설정" : isSignIn ? "로그인" : "회원가입"}
         </h2>
 
-        <label style={{ display: "block", marginBottom: "8px" }}>
-          이메일
-        </label>
-        <input
-          type="email"
-          value={email}
-          placeholder="email@example.com"
-          onChange={(event) => setEmail(event.target.value)}
-          required
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "12px",
-            borderRadius: "8px",
-            border: "1px solid #444",
-            background: "#111",
-            color: "#fff",
-          }}
-        />
+        <div className="login-fields">
+          {!isResetPassword && (
+            <label className="login-field">
+              <span className="visually-hidden">이메일</span>
+              <input
+                className="login-input"
+                type="email"
+                value={email}
+                placeholder="이메일을 입력하세요"
+                autoComplete="email"
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+          )}
 
-        <label style={{ display: "block", marginBottom: "8px" }}>
-          비밀번호
-        </label>
-        <input
-          type="password"
-          value={password}
-          placeholder="비밀번호"
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          minLength={6}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "16px",
-            borderRadius: "8px",
-            border: "1px solid #444",
-            background: "#111",
-            color: "#fff",
-          }}
-        />
+          <label className="login-field login-password-field">
+            <span className="visually-hidden">
+              {isResetPassword ? "새 비밀번호" : "비밀번호"}
+            </span>
+            <input
+              className="login-input login-password-input"
+              type={isPasswordVisible ? "text" : "password"}
+              value={password}
+              placeholder={isResetPassword ? "새 비밀번호를 입력하세요" : "비밀번호를 입력하세요"}
+              autoComplete={isResetPassword ? "new-password" : "current-password"}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              minLength={isSignIn ? 6 : 8}
+            />
+            <button
+              className="login-password-toggle"
+              type="button"
+              onClick={() => setIsPasswordVisible((visible) => !visible)}
+              aria-label={isPasswordVisible ? "비밀번호 숨기기" : "비밀번호 보기"}
+            >
+              {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </label>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          style={{
-            width: "100%",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          {isLoading ? "처리 중..." : isSignIn ? "로그인" : "회원가입"}
+          {isResetPassword && (
+            <label className="login-field">
+              <span className="visually-hidden">새 비밀번호 확인</span>
+              <input
+                className="login-input"
+                type={isPasswordVisible ? "text" : "password"}
+                value={passwordConfirm}
+                placeholder="새 비밀번호를 다시 입력하세요"
+                autoComplete="new-password"
+                onChange={(event) => setPasswordConfirm(event.target.value)}
+                required
+                minLength={8}
+              />
+            </label>
+          )}
+        </div>
+
+        {isSignIn && (
+          <div className="login-options">
+            <label className="login-remember">
+              <input
+                type="checkbox"
+                checked={rememberLogin}
+                onChange={(event) => setRememberLogin(event.target.checked)}
+              />
+              <span>로그인 유지</span>
+            </label>
+            <button
+              className="login-text-button"
+              type="button"
+              disabled={isLoading}
+              onClick={handlePasswordResetRequest}
+            >
+              비밀번호 찾기
+            </button>
+          </div>
+        )}
+
+        <button className="login-submit" type="submit" disabled={isLoading}>
+          {isLoading
+            ? "처리 중..."
+            : isResetPassword
+              ? "비밀번호 변경"
+              : isSignIn
+                ? "이메일로 로그인"
+                : "회원가입"}
         </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode(isSignIn ? "signUp" : "signIn");
-            setMessage("");
-          }}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginTop: "10px",
-            borderRadius: "8px",
-            border: "1px solid #444",
-            background: "transparent",
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          {isSignIn ? "회원가입으로 전환" : "로그인으로 전환"}
-        </button>
+        {!isResetPassword && (
+          <div className="login-links" aria-label="계정 도움말">
+            {isSignIn ? (
+              <>
+                <button type="button" onClick={() => changeMode("signUp")}>회원가입</button>
+                <span className="login-link-divider" aria-hidden="true" />
+                <button type="button" onClick={handleFindEmail}>이메일 찾기</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => changeMode("signIn")}>로그인으로 돌아가기</button>
+            )}
+          </div>
+        )}
 
         {message && (
-          <p style={{ marginTop: "14px", fontSize: "13px", color: "#ddd" }}>
+          <p className="login-message" role="status" aria-live="polite">
             {message}
           </p>
         )}

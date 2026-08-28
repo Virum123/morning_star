@@ -496,6 +496,18 @@ export default function DailyPlanner({
     updatedFiles[fileIndex] = { ...file, content: newContent };
     setFilesData(prev => ({ ...prev, [activeTarget]: updatedFiles }));
 
+    const scheduleId = file.scheduleRows?.[lineIndex]?.id;
+    if (scheduleId) {
+      try {
+        await deleteSchedule({ id: scheduleId });
+        await loadContent();
+      } catch (err) {
+        console.error("Failed to add to trash", err);
+        await loadContent();
+      }
+      return;
+    }
+
     await updateSchedule({ filepath: file.path, content: newContent });
     await handleTrashTask(removedLine, file.filename);
   };
