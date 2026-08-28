@@ -38,5 +38,10 @@ Desktop.ini
 # Logs
 *.log
 
+# Local environment variables
+.env
+.env.*
+!.env.example
+
 # Local app data
 .morning_star_data/

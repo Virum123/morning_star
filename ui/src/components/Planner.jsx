@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Calendar, LayoutGrid, CalendarDays, Star } from 'lucide-react';
+import { Calendar, LayoutGrid, CalendarDays, PenLine, Star } from 'lucide-react';
 import { getScheduleCompletionDays, getSchedules, saveScheduleCompletionDays } from '../services/scheduleService';
 import { t } from '../utils/i18n';
 import { appTodayDate, localDateFromStr, localDateStr, startOfLocalWeek } from '../utils/date';
@@ -9,7 +9,7 @@ import WeeklyPlanner from './WeeklyPlanner';
 import MonthlyPlanner from './MonthlyPlanner';
 import './Planner.css';
 
-export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
+export default function Planner({ lang = 'ko', refreshSignal = 0, onOpenArchive }) {
   const [activeView, setActiveView] = useState('daily'); // 'daily', 'weekly', 'monthly'
   const [targetDateStr, setTargetDateStr] = useState(null);
   const [weeklyOffset, setWeeklyOffset] = useState(0);
@@ -142,6 +142,12 @@ export default function Planner({ lang = 'ko', refreshSignal = 0 }) {
           <button className="freq-tasks-trigger-btn tab-row-freq-btn" onClick={() => setFreqTrigger(n => n + 1)}>
             <Star size={15} />
             {t(lang, 'frequentTasks')}
+          </button>
+        )}
+        {onOpenArchive && (
+          <button type="button" className="freq-tasks-trigger-btn" onClick={onOpenArchive}>
+            <PenLine size={15} />
+            {t(lang, 'dailyReflectionTitle')}
           </button>
         )}
       </div>

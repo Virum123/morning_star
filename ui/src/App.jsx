@@ -586,7 +586,7 @@ function App() {
   const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [nickname, setNickname] = useState('Alex');
   const [plannerRefreshSignal, setPlannerRefreshSignal] = useState(0);
-  const [archiveKey, setArchiveKey] = useState(0);
+  const [archiveRefreshSignal, setArchiveRefreshSignal] = useState(0);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const activeTabRef = useRef(activeTab);
   const lastRefreshAtRef = useRef(0);
@@ -634,7 +634,7 @@ function App() {
 
   const refreshActiveTabData = useCallback((tab = activeTabRef.current) => {
     if (tab === 'planner') setPlannerRefreshSignal((currentSignal) => currentSignal + 1);
-    if (tab === 'archive') setArchiveKey((currentKey) => currentKey + 1);
+    if (tab === 'archive') setArchiveRefreshSignal((currentSignal) => currentSignal + 1);
   }, []);
 
   const refreshFromHost = useCallback(async ({ refreshActiveTab = true } = {}) => {
@@ -801,6 +801,13 @@ function App() {
     return 'none';
   };
 
+  const openArchiveFromPlanner = () => {
+    activeTabRef.current = 'archive';
+    setActiveTab('archive');
+    setArchiveRefreshSignal((currentSignal) => currentSignal + 1);
+    trackEvent('tab_view', { tab_name: 'archive' });
+  };
+
   const renderContent = () => {
     if (!isReady) {
       return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>{t(lang, 'loadingApp')}</div>;
@@ -817,10 +824,10 @@ function App() {
     );
 
     switch (activeTab) {
-      case 'planner': return wrapper(<Planner lang={lang} refreshSignal={plannerRefreshSignal} />);
-      case 'archive': return wrapper(<Archive key={archiveKey} lang={lang} />);
+      case 'planner': return wrapper(<Planner lang={lang} refreshSignal={plannerRefreshSignal} onOpenArchive={openArchiveFromPlanner} />);
+      case 'archive': return wrapper(<Archive lang={lang} refreshSignal={archiveRefreshSignal} />);
       case 'settings': return wrapper(<Settings lang={lang} configSnapshot={appConfig} onConfigSaved={handleConfigSaved} onLanguageChange={handleLanguageChange} />);
-      default: return wrapper(<Planner lang={lang} refreshSignal={plannerRefreshSignal} />);
+      default: return wrapper(<Planner lang={lang} refreshSignal={plannerRefreshSignal} onOpenArchive={openArchiveFromPlanner} />);
     }
   };
 
@@ -911,7 +918,7 @@ function App() {
                 activeTabRef.current = id;
                 setActiveTab(id);
                 if (id === 'planner') setPlannerRefreshSignal((currentSignal) => currentSignal + 1);
-                if (id === 'archive') setArchiveKey((currentKey) => currentKey + 1);
+                if (id === 'archive') setArchiveRefreshSignal((currentSignal) => currentSignal + 1);
                 trackEvent('tab_view', { tab_name: id });
               }}
             >

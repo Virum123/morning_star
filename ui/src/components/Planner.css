@@ -2183,8 +2183,10 @@
 }
 
 .planner-calendar-wrapper {
-  align-self: center;
-  width: min(100%, 680px);
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
 }
 
 .planner-header h2,

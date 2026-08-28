@@ -124,6 +124,150 @@
   line-height: 1.5;
 }
 
+.daily-reflection-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--ornament-line);
+  border-radius: 10px;
+  background: var(--input-bg);
+}
+
+.daily-reflection-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.daily-reflection-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.daily-reflection-heading > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-color);
+}
+
+.daily-reflection-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.daily-reflection-heading p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.daily-reflection-date {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.daily-reflection-date input {
+  min-height: 32px;
+  padding: 4px 7px;
+  border: 1px solid var(--input-border);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-reflection-date input:focus-visible,
+.daily-reflection-textarea:focus-visible {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.daily-reflection-textarea {
+  width: 100%;
+  min-height: 118px;
+  padding: 11px 12px;
+  resize: vertical;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.daily-reflection-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.daily-reflection-date input:disabled,
+.daily-reflection-textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.daily-reflection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.daily-reflection-status {
+  margin-right: auto;
+  color: var(--text-primary);
+  font-size: 0.7rem;
+}
+
+.daily-reflection-status.error {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.daily-reflection-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--pill-active-border);
+  border-radius: 7px;
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.daily-reflection-save-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 12px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.daily-reflection-save-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* files-grid, accordion-list are reused from existing files.css implicitly or we define them here */
 .files-grid {
   display: grid;
@@ -454,5 +598,14 @@
 @media (max-width: 560px) {
   .review-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .daily-reflection-header {
+    flex-direction: column;
+  }
+
+  .daily-reflection-date {
+    width: 100%;
+    justify-content: space-between;
   }
 }
