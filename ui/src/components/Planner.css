@@ -2170,3 +2170,58 @@
     width: 108px;
   }
 }
+
+/* Compact navigation and consistent UI typography. */
+.planner-view-tabs {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tab-row-freq-btn {
+  margin-left: 8px;
+}
+
+.planner-calendar-wrapper {
+  align-self: center;
+  width: min(100%, 680px);
+}
+
+.planner-header h2,
+.widget-title,
+.weekly-heading-group h2,
+.w-day-num,
+.w-empty,
+.monthly-header h2,
+.m-date-num,
+.cal-day-num {
+  font-family: inherit;
+}
+
+.cal-day-num,
+.w-day-num,
+.m-date-num,
+.weekly-day-count,
+.donut-pct,
+.time-display-static,
+.date-picker-control input {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@media (max-width: 720px) {
+  .planner-calendar-wrapper {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .planner-view-tabs {
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .tab-row-freq-btn {
+    margin-left: 0;
+  }
+}

@@ -763,3 +763,16 @@ body.theme-dark .glass-card {
     padding: 32px 20px 24px;
   }
 }
+
+/* Keep the product UI crisp; reserve the serif face for the Morning Star brand. */
+.app-header-greeting h1,
+.tab-title,
+.modal-title,
+.step-number {
+  font-family: inherit;
+}
+
+.step-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}

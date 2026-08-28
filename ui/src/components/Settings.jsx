@@ -30,7 +30,7 @@ function normalizeConfig(configSnapshot) {
   return nextConfig;
 }
 
-export default function Settings({ lang = 'ko', configSnapshot = null, onConfigSaved }) {
+export default function Settings({ lang = 'ko', configSnapshot = null, onConfigSaved, onLanguageChange }) {
   const [config, setConfig] = useState(() => normalizeConfig(configSnapshot));
   const [nickname, setNickname] = useState(configSnapshot?.nickname || 'Alex');
   const [saving, setSaving] = useState(false);
@@ -136,7 +136,9 @@ export default function Settings({ lang = 'ko', configSnapshot = null, onConfigS
   };
 
   const handleLanguageChange = (e) => {
-    setConfig((currentConfig) => ({ ...currentConfig, language: e.target.value }));
+    const nextLanguage = e.target.value;
+    setConfig((currentConfig) => ({ ...currentConfig, language: nextLanguage }));
+    onLanguageChange?.(nextLanguage);
   };
 
   const handleAddTime = () => {

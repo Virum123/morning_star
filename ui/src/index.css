@@ -1,5 +1,6 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Apple SD Gothic Neo", "Pretendard", "Avenir Next", "Helvetica Neue", sans-serif;
+  --font-ui: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   color-scheme: light;
 
@@ -47,6 +48,14 @@
   --divider: rgba(78, 53, 32, 0.08);
   --pill-active-bg: rgba(212, 154, 38, 0.12);
   --pill-active-border: rgba(212, 154, 38, 0.3);
+}
+
+:root:lang(en) {
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+:root:lang(ja) {
+  --font-ui: "Noto Sans JP", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
 }
 
 * {

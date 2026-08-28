@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard, LogOut, Globe2 } from 'lucide-react';
+import { History, Settings as SettingsIcon, HelpCircle, X, LayoutDashboard, LogOut } from 'lucide-react';
 import { api } from './utils/api';
 import { trackEvent, setAnalyticsUser } from './utils/analytics';
 import { t } from './utils/i18n';
@@ -819,7 +819,7 @@ function App() {
     switch (activeTab) {
       case 'planner': return wrapper(<Planner lang={lang} refreshSignal={plannerRefreshSignal} />);
       case 'archive': return wrapper(<Archive key={archiveKey} lang={lang} />);
-      case 'settings': return wrapper(<Settings lang={lang} configSnapshot={appConfig} onConfigSaved={handleConfigSaved} />);
+      case 'settings': return wrapper(<Settings lang={lang} configSnapshot={appConfig} onConfigSaved={handleConfigSaved} onLanguageChange={handleLanguageChange} />);
       default: return wrapper(<Planner lang={lang} refreshSignal={plannerRefreshSignal} />);
     }
   };
@@ -837,7 +837,7 @@ function App() {
 
   const navItems = [
     { id: 'planner', icon: <LayoutDashboard size={18} />, label: t(lang, 'planner') || 'Planner' },
-    { id: 'archive', icon: <FileText size={18} />, label: t(lang, 'archive') || 'Archive' },
+    { id: 'archive', icon: <History size={18} />, label: t(lang, 'archive') || 'Review' },
     { id: 'settings', icon: <SettingsIcon size={18} />, label: t(lang, 'settings') },
   ];
 
@@ -919,35 +919,7 @@ function App() {
               <span>{label}</span>
             </button>
           ))}
-
-
           <div style={{ flexGrow: 1 }} />
-
-          <div className="sidebar-language" role="group" aria-label={t(lang, 'languageSwitcherLabel')}>
-            <div className="sidebar-language-label">
-              <Globe2 size={14} />
-              <span>{t(lang, 'languageSwitcherLabel')}</span>
-            </div>
-            <div className="sidebar-language-options">
-              {[
-                { id: 'ko', label: '한' },
-                { id: 'en', label: 'EN' },
-                { id: 'jp', label: '日' },
-              ].map((language) => (
-                <button
-                  type="button"
-                  key={language.id}
-                  className={lang === language.id ? 'active' : ''}
-                  onClick={() => handleLanguageChange(language.id)}
-                  aria-pressed={lang === language.id}
-                  aria-label={language.id === 'ko' ? '한국어' : language.id === 'en' ? 'English' : '日本語'}
-                  title={language.id === 'ko' ? '한국어' : language.id === 'en' ? 'English' : '日本語'}
-                >
-                  {language.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <button
             type="button"
@@ -986,7 +958,7 @@ function App() {
             onClick={e => e.stopPropagation()}
             style={{ maxWidth: '560px', maxHeight: '88vh', overflowY: 'auto' }}
           >
-            <button type="button" className="icon-btn close-modal-btn" onClick={() => setIsHelpOpen(false)} aria-label={t(lang, 'freqCancel')}>
+            <button type="button" className="icon-btn close-modal-btn" onClick={() => setIsHelpOpen(false)} aria-label={t(lang, 'closeDialog')}>
               <X size={20} />
             </button>
             <h2 id="help-dialog-title" className="modal-title">{t(lang, 'helpTitle')}</h2>

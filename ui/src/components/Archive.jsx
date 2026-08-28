@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, CalendarCheck, CheckCircle2, ChevronDown, ChevronUp, Circle, X } from 'lucide-react';
 import { getScheduleActivityLog, getSchedules } from '../services/scheduleService';
 import { t } from '../utils/i18n';
+import { localDateStr } from '../utils/date';
 import { buildDateSummaries, getAppDateContext, getByDateFiles } from '../utils/plannerData';
 import './Archive.css';
 
@@ -76,6 +77,18 @@ export default function Archive({ lang = 'ko' }) {
   const dateSummaries = useMemo(() => buildDateSummaries(filesData, dateContext), [dateContext, filesData]);
   const pastSummaries = dateSummaries.filter((summary) => summary.dateStr < dateContext.todayStr);
   const scheduledSummaries = dateSummaries.filter((summary) => summary.dateStr >= dateContext.todayStr);
+  const reviewStartDate = new Date(dateContext.todayDate);
+  reviewStartDate.setDate(reviewStartDate.getDate() - 7);
+  const recentReviewSummaries = pastSummaries.filter((summary) => summary.dateStr >= localDateStr(reviewStartDate));
+  const reviewStats = recentReviewSummaries.reduce((stats, summary) => ({
+    days: stats.days + 1,
+    total: stats.total + summary.total,
+    checked: stats.checked + summary.checked,
+    remaining: stats.remaining + summary.remaining,
+  }), { days: 0, total: 0, checked: 0, remaining: 0 });
+  const reviewCompletionRate = reviewStats.total > 0
+    ? Math.round((reviewStats.checked / reviewStats.total) * 100)
+    : 0;
 
   const renderFileList = (fileArray, target, dateKey = null) => {
     if (!fileArray || fileArray.length === 0) {
@@ -195,9 +208,11 @@ export default function Archive({ lang = 'ko' }) {
     <div className="accordion-list">
       {summaries.map(summary => (
         <div className="accordion-item" key={summary.dateStr}>
-          <div
+          <button
+            type="button"
             className="accordion-header"
             onClick={() => toggleAccordion(summary.dateStr)}
+            aria-expanded={Boolean(expandedDates[summary.dateStr])}
           >
             <div className="archive-accordion-title">
               <span className="accordion-title">{summary.dateStr}</span>
@@ -206,7 +221,7 @@ export default function Archive({ lang = 'ko' }) {
               </span>
             </div>
             {expandedDates[summary.dateStr] ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </div>
+          </button>
           {expandedDates[summary.dateStr] && (
             <div className="accordion-body">
               {renderDateSummary(summary)}
@@ -219,12 +234,40 @@ export default function Archive({ lang = 'ko' }) {
 
   return (
     <div className="archive-container fade-in">
+      <section className="review-overview glass-card">
+        <div className="review-heading">
+          <span>{t(lang, 'reviewPeriod')}</span>
+          <h2>{t(lang, 'reviewTitle')}</h2>
+          <p>{t(lang, 'reviewDesc')}</p>
+        </div>
+        <div className="review-summary-grid" aria-label={t(lang, 'reviewTitle')}>
+          <div className="review-summary-card">
+            <span>{t(lang, 'reviewDays')}</span>
+            <strong>{reviewStats.days}</strong>
+          </div>
+          <div className="review-summary-card highlight">
+            <span>{t(lang, 'reviewCompletionRate')}</span>
+            <strong>{reviewCompletionRate}%</strong>
+          </div>
+          <div className="review-summary-card">
+            <span>{t(lang, 'archiveCompleted')}</span>
+            <strong>{reviewStats.checked}</strong>
+          </div>
+          <div className="review-summary-card">
+            <span>{t(lang, 'archiveUnfinished')}</span>
+            <strong>{reviewStats.remaining}</strong>
+          </div>
+        </div>
+      </section>
+
       <div className="archive-tabs-nav">
         <button 
+          type="button"
           className={`archive-tab-btn ${activeTab === 'yesterday' ? 'active' : ''}`}
           onClick={() => setActiveTab('yesterday')}
-        >{t(lang, 'pastTasks')}</button>
+        >{t(lang, 'dailyReview')}</button>
         <button
+          type="button"
           className={`archive-tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
           onClick={() => setActiveTab('activity')}
         >{t(lang, 'operationLog')}</button>
@@ -252,7 +295,7 @@ export default function Archive({ lang = 'ko' }) {
                     )}
                     {scheduledSummaries.length > 0 && (
                       <section>
-                        <h4 className="archive-section-title">{t(lang, 'scheduledTasks')}</h4>
+                        <h4 className="archive-section-title">{t(lang, 'upcomingPlans')}</h4>
                         {renderSummaryAccordion(scheduledSummaries)}
                       </section>
                     )}
