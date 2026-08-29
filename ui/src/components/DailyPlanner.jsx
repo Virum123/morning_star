@@ -123,6 +123,10 @@ export default function DailyPlanner({
   const dateContext = useMemo(() => ({ todayStr, tomorrowStr }), [todayStr, tomorrowStr]);
   const byDateFiles = useMemo(() => getByDateFiles(filesData), [filesData]);
   const migratedUnfinishedKeys = useMemo(() => getMigratedUnfinishedTaskKeys(filesData), [filesData]);
+  const resolvedUnfinishedTasks = useMemo(() => {
+    const tasks = filesData.migratedUnfinishedTasks || filesData.migrated_unfinished_tasks || [];
+    return new Map(tasks.map((task) => [makeMigratedUnfinishedTaskKey(task), task]).filter(([key]) => key));
+  }, [filesData]);
 
   const [selectedDateStr, setSelectedDateStr] = useState(todayStr);
   const isPastSelectedDate = selectedDateStr < todayStr;
@@ -154,6 +158,8 @@ export default function DailyPlanner({
 
   // Inline edit state
   const [editingItem, setEditingItem] = useState(null);
+  const [isResolvingPastTask, setIsResolvingPastTask] = useState(false);
+  const resolvingPastTaskRef = useRef(false);
 
   // Drag and drop state
   const [dragItem, setDragItem] = useState(null);
@@ -191,10 +197,6 @@ export default function DailyPlanner({
       previousFocus?.focus?.();
     };
   }, [showStreakModal]);
-
-  // Stable random values for "어제 못한 일 없음" message — only re-rolls on remount
-  const randomEmojiIdx = useRef(Math.floor(Math.random() * 10));
-  const randomMsgIdx = useRef(Math.floor(Math.random() * 10));
 
   // Frequent tasks modal state
   const [showFreqModal, setShowFreqModal] = useState(false);
@@ -432,6 +434,10 @@ export default function DailyPlanner({
   };
 
   const handleUnfinishedDragStart = (e, task) => {
+    if (resolvingPastTaskRef.current) {
+      e.preventDefault();
+      return;
+    }
     droppedOnValidTarget.current = false;
     dragCancelled.current = false;
     setDragItem({ type: 'unfinished', task });
@@ -607,6 +613,10 @@ export default function DailyPlanner({
   }, [byDateFiles, migratedUnfinishedKeys, todayStr]);
 
   const handleMigrateTask = async (task) => {
+    if (resolvingPastTaskRef.current) return;
+
+    resolvingPastTaskRef.current = true;
+    setIsResolvingPastTask(true);
     try {
       const result = await updateSchedule({
         sourcePath: task.filePath,
@@ -624,6 +634,39 @@ export default function DailyPlanner({
     } catch (err) {
       console.error("Failed to migrate task", err);
       await loadContent();
+    } finally {
+      resolvingPastTaskRef.current = false;
+      setIsResolvingPastTask(false);
+    }
+  };
+
+  const handleResolvePastTask = async (task, { targetDate, resolution } = {}) => {
+    if (resolvingPastTaskRef.current) return;
+
+    resolvingPastTaskRef.current = true;
+    setIsResolvingPastTask(true);
+    try {
+      const result = await updateSchedule({
+        sourcePath: task.filePath,
+        sourceDate: task.date,
+        lineIndex: task.lineIndex,
+        taskText: task.text,
+        targetDate,
+        resolution,
+      });
+
+      if (result?.files) {
+        setFilesData(result.files);
+      } else {
+        await loadContent();
+      }
+      trackEvent(resolution === 'released' ? 'task_released' : 'task_rescheduled');
+    } catch (err) {
+      console.error('Failed to resolve past task', err);
+      await loadContent();
+    } finally {
+      resolvingPastTaskRef.current = false;
+      setIsResolvingPastTask(false);
     }
   };
 
@@ -807,19 +850,78 @@ export default function DailyPlanner({
 
   const renderPastTaskRows = (items, type) => (
     <ul className="planner-tasks past-task-list">
-      {items.map((item) => (
-        <li key={item.key} className={`planner-task-item past-task-item ${type === 'completed' ? 'checked' : 'past-unfinished'}`}>
-          <span className="past-task-icon">
-            {type === 'completed' ? <CheckCircle2 size={18} className="done" /> : <Circle size={18} />}
-          </span>
-          <span className="task-text">{item.text}</span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const isCompleted = type === 'completed';
+        const isResolved = type === 'resolved';
+        const resolutionLabel = item.resolution?.resolution === 'released'
+          ? t(lang, 'releasedTaskStatus')
+          : item.resolution?.resolution === 'scheduled'
+            ? `${item.resolution.target_date} · ${t(lang, 'rescheduledTaskStatus')}`
+            : t(lang, 'movedTodayTaskStatus');
+
+        return (
+          <li
+            key={item.key}
+            className={`planner-task-item past-task-item ${isCompleted ? 'checked' : isResolved ? 'past-resolved' : 'past-unfinished'}`}
+          >
+            <span className="past-task-icon">
+              {isCompleted
+                ? <CheckCircle2 size={18} className="done" />
+                : isResolved
+                  ? <ChevronRight size={18} />
+                  : <Circle size={18} />}
+            </span>
+            <span className="task-text">{item.text}</span>
+            {isResolved && <span className="past-task-resolution">{resolutionLabel}</span>}
+            {!isCompleted && !isResolved && (
+              <div className="past-task-actions">
+                <button
+                  type="button"
+                  className="past-task-action"
+                  disabled={isResolvingPastTask}
+                  onClick={() => handleResolvePastTask(item, { targetDate: todayStr })}
+                  title={t(lang, 'migrateTask')}
+                  aria-label={`${item.text}: ${t(lang, 'migrateTask')}`}
+                >
+                  <Plus size={13} />
+                  {t(lang, 'moveToTodayShort')}
+                </button>
+                <label className={`past-task-action past-task-date-action ${isResolvingPastTask ? 'disabled' : ''}`}>
+                  <input
+                    type="date"
+                    min={todayStr}
+                    disabled={isResolvingPastTask}
+                    aria-label={`${item.text}: ${t(lang, 'rescheduleTask')}`}
+                    onChange={(event) => {
+                      const nextDate = event.target.value;
+                      event.target.value = '';
+                      if (nextDate) handleResolvePastTask(item, { targetDate: nextDate });
+                    }}
+                  />
+                  <CalendarDays size={13} />
+                  {t(lang, 'rescheduleTask')}
+                </label>
+                <button
+                  type="button"
+                  className="past-task-action"
+                  disabled={isResolvingPastTask}
+                  onClick={() => handleResolvePastTask(item, { resolution: 'released' })}
+                  aria-label={`${item.text}: ${t(lang, 'releaseTask')}`}
+                >
+                  <X size={13} />
+                  {t(lang, 'releaseTask')}
+                </button>
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 
   const renderPastTaskSections = () => {
     const unfinished = [];
+    const resolved = [];
     const completed = [];
 
     stats.enriched.forEach((file) => {
@@ -827,23 +929,44 @@ export default function DailyPlanner({
         const task = {
           ...item,
           key: `${file.path}-${item.lineIndex}-${itemIndex}`,
+          date: selectedDateStr,
+          filePath: file.path,
+          filename: file.filename,
         };
+        const resolutionKey = makeMigratedUnfinishedTaskKey(task);
+        const resolution = resolvedUnfinishedTasks.get(resolutionKey);
         if (item.checked) completed.push(task);
+        else if (resolution) resolved.push({ ...task, resolution });
         else unfinished.push(task);
       });
     });
 
-    if (unfinished.length === 0) return renderTaskFiles();
+    if (unfinished.length === 0 && resolved.length === 0) return renderTaskFiles();
 
     return (
       <div className="past-task-sections">
-        <section className="past-task-section past-task-section-unfinished">
-          <div className="past-task-section-header">
-            <h3>{t(lang, 'pastUnfinishedSection')}</h3>
-            <span>{unfinished.length}</span>
-          </div>
-          {renderPastTaskRows(unfinished, 'unfinished')}
-        </section>
+        {unfinished.length > 0 && (
+          <section className="past-task-section past-task-section-unfinished">
+            <div className="past-task-section-header">
+              <div className="past-task-section-copy">
+                <h3>{t(lang, 'pastUnfinishedSection')}</h3>
+                <p>{t(lang, 'pastUnfinishedDesc')}</p>
+              </div>
+              <span>{unfinished.length}</span>
+            </div>
+            {renderPastTaskRows(unfinished, 'unfinished')}
+          </section>
+        )}
+
+        {resolved.length > 0 && (
+          <section className="past-task-section past-task-section-resolved">
+            <div className="past-task-section-header">
+              <h3>{t(lang, 'pastResolvedSection')}</h3>
+              <span>{resolved.length}</span>
+            </div>
+            {renderPastTaskRows(resolved, 'resolved')}
+          </section>
+        )}
 
         {completed.length > 0 && (
           <section className="past-task-section">
@@ -1097,14 +1220,20 @@ export default function DailyPlanner({
                       <li
                         key={i}
                         className="planner-task-item unfinished-task-row"
-                        draggable
+                        draggable={!isResolvingPastTask}
                         onDragStart={(e) => handleUnfinishedDragStart(e, task)}
                         onDragEnd={handleDragEnd}
                         title={t(lang, 'migrateTask')}
                       >
                         <div className="drag-handle"><GripVertical size={16} /></div>
                         <span className="task-text unfinished-task-text">{task.text}</span>
-                        <button className="icon-btn unfinished-migrate-btn" onClick={() => handleMigrateTask(task)} title={t(lang, 'migrateTask')}>
+                        <button
+                          className="icon-btn unfinished-migrate-btn"
+                          disabled={isResolvingPastTask}
+                          onClick={() => handleMigrateTask(task)}
+                          title={t(lang, 'migrateTask')}
+                          aria-label={`${task.text}: ${t(lang, 'migrateTask')}`}
+                        >
                           <Plus size={16} />
                         </button>
                       </li>
@@ -1112,13 +1241,8 @@ export default function DailyPlanner({
                   </ul>
                 </>
               ) : (
-                <div className="unfinished-empty-praise">
-                  <div className="unfinished-empty-emoji">
-                    {['🎉', '🔥', '✨', '🚀', '🌟', '💪', '🏆', '💯', '🎈', '👍'][randomEmojiIdx.current]}
-                  </div>
-                  <div className="unfinished-empty-copy">
-                    {t(lang, 'unfinishedPraiseMessages')[randomMsgIdx.current % t(lang, 'unfinishedPraiseMessages').length]}
-                  </div>
+                <div className="unfinished-empty-praise" role="img" aria-label={t(lang, 'unfinishedEmptyLabel')}>
+                  <div className="unfinished-empty-emoji" aria-hidden="true">🌱</div>
                 </div>
               )}
             </div>

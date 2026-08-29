@@ -48,21 +48,30 @@ function saveMigratedUnfinishedTasks(tasks) {
   writeJsonStorage(MIGRATED_UNFINISHED_STORAGE_KEY, Array.isArray(tasks) ? tasks : []);
 }
 
-function rememberMigratedUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText }) {
+function rememberMigratedUnfinishedTask({
+  sourcePath,
+  sourceDate,
+  lineIndex,
+  taskText,
+  resolution = 'today',
+  targetDate = '',
+}) {
   const nextTask = {
     source_path: sourcePath,
     source_date: sourceDate,
     line_index: lineIndex,
     task_text: taskText,
+    resolution,
+    target_date: targetDate,
   };
   const nextKey = makeMigratedUnfinishedTaskKey(nextTask);
   if (!nextKey) return getMigratedUnfinishedTasks();
 
   const currentTasks = getMigratedUnfinishedTasks();
-  const existingKeys = new Set(currentTasks.map(makeMigratedUnfinishedTaskKey).filter(Boolean));
-  if (existingKeys.has(nextKey)) return currentTasks;
-
-  const nextTasks = [...currentTasks, nextTask];
+  const nextTasks = [
+    ...currentTasks.filter((task) => makeMigratedUnfinishedTaskKey(task) !== nextKey),
+    nextTask,
+  ];
   saveMigratedUnfinishedTasks(nextTasks);
   return nextTasks;
 }
@@ -96,6 +105,26 @@ function getCachedRowsForDate(dateStr) {
     }
   }
   return null;
+}
+
+function isCompletedScheduleRow(row = {}) {
+  return ['completed', 'done', 'checked'].includes(String(row.status || '').toLowerCase());
+}
+
+function assertActiveSourceTask({ sourcePath, sourceDate, lineIndex, taskText }) {
+  const sourceFile = scheduleFileCache.get(sourcePath);
+  const sourceRow = sourceFile?.dateStr === sourceDate
+    ? sourceFile.rows?.[lineIndex]
+    : null;
+  const sourceMatches = sourceRow
+    && normalizeTaskIdentityText(sourceRow.title) === normalizeTaskIdentityText(taskText)
+    && !isCompletedScheduleRow(sourceRow);
+
+  if (!sourceMatches) {
+    throw new Error('이 일정은 다른 곳에서 변경되었습니다. 새로고침 후 다시 확인해 주세요.');
+  }
+
+  return sourceRow;
 }
 
 async function loadSchedulesFromSupabase() {
@@ -225,30 +254,68 @@ async function persistPlannerFileContent(filepath, content) {
   };
 }
 
-async function migrateUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText }) {
+async function migrateUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText, targetDate }) {
   if (!sourcePath || !sourceDate || typeof lineIndex !== 'number' || !taskText) {
     throw new Error('이전할 일정 정보가 부족합니다.');
   }
 
   await loadSchedulesFromSupabase();
+  assertActiveSourceTask({ sourcePath, sourceDate, lineIndex, taskText });
   const todayStr = getAppDateContext().todayStr;
-  const todayRows = getCachedRowsForDate(todayStr) || [];
+  const resolvedTargetDate = targetDate || todayStr;
+  if (resolvedTargetDate < todayStr) {
+    throw new Error('지난 날짜로는 일정을 다시 정할 수 없습니다.');
+  }
+
+  const targetRows = getCachedRowsForDate(resolvedTargetDate) || [];
   const normalizedTaskText = normalizeTaskIdentityText(taskText);
-  const alreadyExists = todayRows.some((row) => (
-    normalizeTaskIdentityText(row.title) === normalizedTaskText
+  const alreadyExists = targetRows.some((row) => (
+    !isCompletedScheduleRow(row)
+    && normalizeTaskIdentityText(row.title) === normalizedTaskText
   ));
 
   if (!alreadyExists) {
-    await createTasksForDate([{ title: taskText, checked: false }], todayStr);
+    await createTasksForDate([{ title: taskText, checked: false }], resolvedTargetDate);
   }
 
-  rememberMigratedUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText });
+  rememberMigratedUnfinishedTask({
+    sourcePath,
+    sourceDate,
+    lineIndex,
+    taskText,
+    resolution: resolvedTargetDate === todayStr ? 'today' : 'scheduled',
+    targetDate: resolvedTargetDate,
+  });
 
   return {
     success: true,
     files: await loadSchedulesFromSupabase(),
     copied_task: taskText,
     already_exists: alreadyExists,
+    target_date: resolvedTargetDate,
+  };
+}
+
+async function releaseUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText }) {
+  if (!sourcePath || !sourceDate || typeof lineIndex !== 'number' || !taskText) {
+    throw new Error('정리할 일정 정보가 부족합니다.');
+  }
+
+  await loadSchedulesFromSupabase();
+  assertActiveSourceTask({ sourcePath, sourceDate, lineIndex, taskText });
+
+  rememberMigratedUnfinishedTask({
+    sourcePath,
+    sourceDate,
+    lineIndex,
+    taskText,
+    resolution: 'released',
+  });
+
+  return {
+    success: true,
+    files: await loadSchedulesFromSupabase(),
+    released_task: taskText,
   };
 }
 
@@ -344,6 +411,8 @@ export async function updateSchedule(schedule = {}, patch = {}) {
     sourceDate,
     lineIndex,
     taskText,
+    targetDate,
+    resolution,
   } = schedule;
 
   try {
@@ -353,7 +422,10 @@ export async function updateSchedule(schedule = {}, patch = {}) {
     }
 
     if (sourcePath && sourceDate && typeof lineIndex === 'number' && taskText) {
-      return await migrateUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText });
+      if (resolution === 'released') {
+        return await releaseUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText });
+      }
+      return await migrateUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText, targetDate });
     }
 
     throw new Error('Unsupported schedule update request.');
