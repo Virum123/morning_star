@@ -39,20 +39,29 @@ function createDynamicSkyIcon({
     12,
   );
   const innerRingRadius = celestialRadius * 0.72;
+  const moonOuterRadius = celestialRadius * 1.02;
+  const moonCutoutRadius = celestialRadius * 0.9;
+  const moonCutoutX = celestialX + celestialRadius * 0.42;
+  const moonMaskId = `moon-cutout-${celestialX}-${celestialY}`;
+  const moonClipId = `moon-clip-${celestialX}-${celestialY}`;
 
   const celestialMarkup = celestial === 'moon'
     ? `
       <defs>
-        <mask id="moon-cutout-${celestialX}-${celestialY}">
+        <mask id="${moonMaskId}" maskUnits="userSpaceOnUse">
           <rect width="128" height="128" fill="black" />
-          <polygon points="${starPolygon}" fill="white" />
-          <circle cx="${celestialX}" cy="${celestialY}" r="${innerRingRadius}" fill="black" />
-          <circle cx="${celestialX - celestialRadius * 0.1}" cy="${celestialY}" r="${celestialRadius * 0.84}" fill="white" />
-          <circle cx="${celestialX + celestialRadius * 0.32}" cy="${celestialY - celestialRadius * 0.08}" r="${celestialRadius * 0.78}" fill="black" />
+          <circle cx="${celestialX}" cy="${celestialY}" r="${moonOuterRadius}" fill="white" />
+          <circle cx="${moonCutoutX}" cy="${celestialY}" r="${moonCutoutRadius}" fill="black" />
         </mask>
+        <clipPath id="${moonClipId}">
+          <circle cx="${celestialX}" cy="${celestialY}" r="${moonOuterRadius}" />
+        </clipPath>
       </defs>
-      <polygon points="${starPolygon}" fill="${celestialColor}" opacity="0.96" mask="url(#moon-cutout-${celestialX}-${celestialY})" />
-      <polygon points="${starPolygon}" fill="none" stroke="${celestialRim}" stroke-width="2.1" opacity="0.92" mask="url(#moon-cutout-${celestialX}-${celestialY})" />
+      <g transform="rotate(-8 ${celestialX} ${celestialY})">
+        <circle cx="${celestialX}" cy="${celestialY}" r="${moonOuterRadius}" fill="${celestialColor}" opacity="0.96" mask="url(#${moonMaskId})" />
+        <circle cx="${celestialX}" cy="${celestialY}" r="${moonOuterRadius}" fill="none" stroke="${celestialRim}" stroke-width="2.1" opacity="0.92" mask="url(#${moonMaskId})" />
+        <circle cx="${moonCutoutX}" cy="${celestialY}" r="${moonCutoutRadius}" fill="none" stroke="${celestialRim}" stroke-width="2.1" opacity="0.88" clip-path="url(#${moonClipId})" />
+      </g>
     `
     : `
       <polygon points="${starPolygon}" fill="${celestialColor}" />
