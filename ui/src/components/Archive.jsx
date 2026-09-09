@@ -19,14 +19,19 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
   const [dailyReflections, setDailyReflections] = useState({});
   const [selectedReflectionDate, setSelectedReflectionDate] = useState(appTodayStr);
   const [reflectionDrafts, setReflectionDrafts] = useState({});
+  const [reflectionEditingDates, setReflectionEditingDates] = useState({});
+  const [reflectionHistoryDate, setReflectionHistoryDate] = useState('');
   const [reflectionSaveState, setReflectionSaveState] = useState('idle');
   const [reflectionLoadError, setReflectionLoadError] = useState(false);
+  const [archiveLoadError, setArchiveLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedDates, setExpandedDates] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
   const previewCloseRef = useRef(null);
   const previousAppDateRef = useRef(appTodayStr);
   const reflectionDataVersionRef = useRef(0);
+  const reflectionSavingRef = useRef(false);
+  const reflectionEditorRef = useRef(null);
 
   useEffect(() => {
     if (!selectedFile) return undefined;
@@ -58,22 +63,28 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
     setLoading(true);
     try {
       const reflectionDataVersion = reflectionDataVersionRef.current;
-      const reflectionsRequest = getDailyReflections()
-        .then((reflections) => ({ reflections }))
-        .catch((error) => ({ error }));
-      const [allFiles, log, reflectionResult] = await Promise.all([
+      const [filesResult, logResult, reflectionResult] = await Promise.allSettled([
         getSchedules(),
         getScheduleActivityLog(),
-        reflectionsRequest,
+        getDailyReflections(),
       ]);
-      setFilesData(allFiles || { byDate: {}, yesterday: {} });
-      setActivityLog(log || []);
+      if (filesResult.status === 'fulfilled') {
+        setFilesData(filesResult.value || { byDate: {}, yesterday: {} });
+      } else {
+        console.error('Failed to load archived schedules.', filesResult.reason);
+      }
+      if (logResult.status === 'fulfilled') {
+        setActivityLog(logResult.value || []);
+      } else {
+        console.error('Failed to load schedule activity.', logResult.reason);
+      }
+      setArchiveLoadError(filesResult.status === 'rejected' || logResult.status === 'rejected');
       if (reflectionDataVersion === reflectionDataVersionRef.current) {
-        if (reflectionResult.error) {
-          console.error('Failed to load daily reflections.', reflectionResult.error);
+        if (reflectionResult.status === 'rejected') {
+          console.error('Failed to load daily reflections.', reflectionResult.reason);
           setReflectionLoadError(true);
         } else {
-          setDailyReflections(reflectionResult.reflections);
+          setDailyReflections(reflectionResult.value);
           setReflectionLoadError(false);
         }
       }
@@ -135,22 +146,55 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
     ? Math.round((reviewStats.checked / reviewStats.total) * 100)
     : 0;
   const savedReflection = dailyReflections[selectedReflectionDate] || '';
-  const reflectionDraft = Object.prototype.hasOwnProperty.call(reflectionDrafts, selectedReflectionDate)
-    ? reflectionDrafts[selectedReflectionDate]
-    : savedReflection;
-  const reflectionIsDirty = reflectionDraft !== savedReflection;
+  const reflectionDraft = reflectionDrafts[selectedReflectionDate] ?? '';
+  const reflectionIsEditing = Boolean(reflectionEditingDates[selectedReflectionDate]);
+  const reflectionNeedsEdit = Boolean(savedReflection) && !reflectionIsEditing;
+  const reflectionIsDirty = reflectionIsEditing
+    ? reflectionDraft !== savedReflection
+    : Boolean(reflectionDraft.trim());
+  const reflectionHistory = Object.entries(dailyReflections)
+    .filter(([date]) => !reflectionHistoryDate || date === reflectionHistoryDate)
+    .sort(([firstDate], [secondDate]) => secondDate.localeCompare(firstDate));
+
+  const editReflection = (date) => {
+    if (reflectionSavingRef.current) return;
+    setSelectedReflectionDate(date);
+    setReflectionDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [date]: currentDrafts[date] ?? dailyReflections[date],
+    }));
+    setReflectionEditingDates((currentDates) => ({ ...currentDates, [date]: true }));
+    setReflectionSaveState('idle');
+    reflectionEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    reflectionEditorRef.current?.focus();
+  };
+
+  const clearReflectionDraft = (date) => {
+    setReflectionDrafts((currentDrafts) => {
+      const nextDrafts = { ...currentDrafts };
+      delete nextDrafts[date];
+      return nextDrafts;
+    });
+    setReflectionEditingDates((currentDates) => {
+      const nextDates = { ...currentDates };
+      delete nextDates[date];
+      return nextDates;
+    });
+  };
 
   const saveReflection = async (event) => {
     event.preventDefault();
-    if (!reflectionIsDirty || reflectionSaveState === 'saving') return;
+    if (!reflectionIsDirty || reflectionNeedsEdit || reflectionLoadError || reflectionSavingRef.current) return;
 
+    reflectionSavingRef.current = true;
     setReflectionSaveState('saving');
-    setReflectionLoadError(false);
     reflectionDataVersionRef.current += 1;
     const reflectionDate = selectedReflectionDate;
     const reflectionContent = reflectionDraft;
     try {
-      const savedContent = await saveDailyReflection(reflectionDate, reflectionContent);
+      const savedContent = await saveDailyReflection(reflectionDate, reflectionContent, {
+        createOnly: !reflectionIsEditing,
+      });
       setDailyReflections((currentReflections) => {
         const nextReflections = { ...currentReflections };
         if (savedContent === null) {
@@ -160,18 +204,26 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
         }
         return nextReflections;
       });
-      setReflectionDrafts((currentDrafts) => {
-        if (!Object.prototype.hasOwnProperty.call(currentDrafts, reflectionDate)) return currentDrafts;
-        const nextDrafts = { ...currentDrafts };
-        delete nextDrafts[reflectionDate];
-        return nextDrafts;
-      });
+      clearReflectionDraft(reflectionDate);
+      setReflectionHistoryDate('');
       reflectionDataVersionRef.current += 1;
       setReflectionSaveState(reflectionContent.trim() ? 'saved' : 'deleted');
     } catch (error) {
       reflectionDataVersionRef.current += 1;
       console.error('Failed to save daily reflection.', error);
-      setReflectionSaveState('error');
+      if (error.code === '23505') {
+        try {
+          setDailyReflections(await getDailyReflections());
+          setReflectionLoadError(false);
+        } catch {
+          setReflectionLoadError(true);
+        }
+        setReflectionSaveState('conflict');
+      } else {
+        setReflectionSaveState('error');
+      }
+    } finally {
+      reflectionSavingRef.current = false;
     }
   };
 
@@ -179,11 +231,13 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
     ? t(lang, 'dailyReflectionSaved')
     : reflectionSaveState === 'deleted'
       ? t(lang, 'dailyReflectionDeleted')
-      : reflectionSaveState === 'error'
-        ? t(lang, 'dailyReflectionSaveError')
-        : reflectionLoadError
-          ? t(lang, 'dailyReflectionLoadError')
-          : '';
+      : reflectionSaveState === 'conflict'
+        ? t(lang, 'dailyReflectionConflict')
+        : reflectionSaveState === 'error'
+          ? t(lang, 'dailyReflectionSaveError')
+          : reflectionLoadError
+            ? t(lang, 'dailyReflectionLoadError')
+            : '';
 
   const renderFileList = (fileArray, target, dateKey = null) => {
     if (!fileArray || fileArray.length === 0) {
@@ -373,6 +427,14 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
           <div className="skeleton-loader">{t(lang, 'loadingTasks')}</div>
         ) : (
           <div className="tab-content">
+            {archiveLoadError && (
+              <div className="archive-load-error daily-reflection-notice" role="alert">
+                <span>{t(lang, 'archiveLoadError')}</span>
+                <button type="button" className="daily-reflection-secondary-btn" onClick={loadFiles}>
+                  {t(lang, 'archiveReload')}
+                </button>
+              </div>
+            )}
             {activeTab === 'yesterday' && (
               <div className="tab-pane fade-in">
                 <form className="daily-reflection-editor" onSubmit={saveReflection}>
@@ -399,13 +461,35 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
                       />
                     </label>
                   </div>
+                  {reflectionNeedsEdit && (
+                    <div className="daily-reflection-notice">
+                      <span>{t(lang, 'dailyReflectionExists')}</span>
+                      <button
+                        type="button"
+                        className="daily-reflection-secondary-btn"
+                        disabled={reflectionSaveState === 'saving'}
+                        onClick={() => editReflection(selectedReflectionDate)}
+                      >
+                        <PenLine size={14} aria-hidden="true" />
+                        {t(lang, 'dailyReflectionEdit')}
+                      </button>
+                    </div>
+                  )}
+                  {reflectionIsEditing && (
+                    <p className="daily-reflection-editing" id="daily-reflection-editing">
+                      {selectedReflectionDate} · {t(lang, 'dailyReflectionEditing')}
+                    </p>
+                  )}
                   <textarea
+                    ref={reflectionEditorRef}
                     className="daily-reflection-textarea"
                     value={reflectionDraft}
                     maxLength={DAILY_REFLECTION_MAX_LENGTH}
                     disabled={reflectionSaveState === 'saving'}
-                    placeholder={t(lang, 'dailyReflectionPlaceholder')}
+                    readOnly={reflectionNeedsEdit || reflectionLoadError}
+                    placeholder={t(lang, reflectionNeedsEdit ? 'dailyReflectionExists' : 'dailyReflectionPlaceholder')}
                     aria-labelledby="daily-reflection-title"
+                    aria-describedby={reflectionIsEditing ? 'daily-reflection-editing' : undefined}
                     onChange={(event) => {
                       setReflectionDrafts((currentDrafts) => ({
                         ...currentDrafts,
@@ -416,24 +500,96 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
                   />
                   <div className="daily-reflection-actions">
                     <span
-                      className={`daily-reflection-status ${reflectionSaveState === 'error' || reflectionLoadError ? 'error' : ''}`}
+                      className={`daily-reflection-status ${reflectionSaveState === 'error' || reflectionSaveState === 'conflict' || reflectionLoadError ? 'error' : ''}`}
                       role="status"
                       aria-live="polite"
                     >
                       {reflectionStatus}
                     </span>
+                    {reflectionIsEditing && (
+                      <button
+                        type="button"
+                        className="daily-reflection-secondary-btn"
+                        disabled={reflectionSaveState === 'saving'}
+                        onClick={() => {
+                          clearReflectionDraft(selectedReflectionDate);
+                          setReflectionSaveState('idle');
+                        }}
+                      >
+                        {t(lang, 'dailyReflectionCancel')}
+                      </button>
+                    )}
                     <button
                       type="submit"
                       className="daily-reflection-save-btn"
-                      disabled={!reflectionIsDirty || reflectionSaveState === 'saving'}
+                      disabled={!reflectionIsDirty || reflectionNeedsEdit || reflectionLoadError || reflectionSaveState === 'saving'}
                     >
                       <Save size={15} aria-hidden="true" />
                       {reflectionSaveState === 'saving'
                         ? t(lang, 'dailyReflectionSaving')
-                        : t(lang, 'dailyReflectionSave')}
+                        : reflectionIsEditing && !reflectionDraft.trim()
+                          ? t(lang, 'dailyReflectionDelete')
+                          : t(lang, reflectionIsEditing ? 'dailyReflectionUpdate' : 'dailyReflectionSave')}
                     </button>
                   </div>
                 </form>
+
+                <section className="daily-reflection-history" aria-labelledby="daily-reflection-history-title">
+                  <div className="daily-reflection-history-header">
+                    <div>
+                      <h3 className="pane-title" id="daily-reflection-history-title">{t(lang, 'dailyReflectionHistory')}</h3>
+                      <p className="pane-desc">{t(lang, 'dailyReflectionHistoryDesc')}</p>
+                    </div>
+                    <div className="daily-reflection-history-filter">
+                      <label className="daily-reflection-date">
+                        <span>{t(lang, 'dailyReflectionHistoryDate')}</span>
+                        <input
+                          type="date"
+                          value={reflectionHistoryDate}
+                          max={appTodayStr}
+                          onChange={(event) => setReflectionHistoryDate(event.target.value)}
+                        />
+                      </label>
+                      {reflectionHistoryDate && (
+                        <button type="button" className="daily-reflection-secondary-btn" onClick={() => setReflectionHistoryDate('')}>
+                          {t(lang, 'dailyReflectionShowAll')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {reflectionLoadError && (
+                    <div className="daily-reflection-notice" role="alert">
+                      <span>{t(lang, 'dailyReflectionLoadError')}</span>
+                      <button type="button" className="daily-reflection-secondary-btn" onClick={loadFiles}>
+                        {t(lang, 'dailyReflectionRetry')}
+                      </button>
+                    </div>
+                  )}
+                  {reflectionHistory.length === 0 ? (
+                    !reflectionLoadError && <div className="empty-state-mini">{t(lang, 'dailyReflectionHistoryEmpty')}</div>
+                  ) : (
+                    <div className="daily-reflection-list">
+                      {reflectionHistory.map(([date, content]) => (
+                        <article className="daily-reflection-entry" key={date}>
+                          <div className="daily-reflection-entry-header">
+                            <time dateTime={date}>{date}</time>
+                            <button
+                              type="button"
+                              className="daily-reflection-secondary-btn"
+                              disabled={reflectionSaveState === 'saving' || reflectionLoadError}
+                              aria-label={`${date} ${t(lang, 'dailyReflectionEdit')}`}
+                              onClick={() => editReflection(date)}
+                            >
+                              <PenLine size={14} aria-hidden="true" />
+                              {t(lang, 'dailyReflectionEdit')}
+                            </button>
+                          </div>
+                          <p className="daily-reflection-content">{content}</p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
 
                 <h3 className="pane-title">{t(lang, 'taskHistory')}</h3>
                 <p className="pane-desc">{t(lang, 'taskHistoryDesc')}</p>

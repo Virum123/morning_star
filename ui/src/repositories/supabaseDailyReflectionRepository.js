@@ -39,16 +39,19 @@ export async function getDailyReflections() {
   return rows;
 }
 
-export async function upsertDailyReflection(reflectionDate, content) {
+export async function upsertDailyReflection(reflectionDate, content, { createOnly = false } = {}) {
   const user = await requireCurrentUser();
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .upsert({
-      user_id: user.id,
-      reflection_date: reflectionDate,
-      content,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,reflection_date' })
+  const row = {
+    user_id: user.id,
+    reflection_date: reflectionDate,
+    content,
+    updated_at: new Date().toISOString(),
+  };
+  const table = supabase.from(TABLE_NAME);
+  const request = createOnly
+    ? table.insert(row)
+    : table.upsert(row, { onConflict: 'user_id,reflection_date' });
+  const { data, error } = await request
     .select('reflection_date, content')
     .single();
 

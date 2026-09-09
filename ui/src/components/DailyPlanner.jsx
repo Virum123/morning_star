@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Flame, CheckCircle2, Circle, ChevronLeft, ChevronRight, PenLine, Send, Plus, GripVertical, Trash2, X, Star, CalendarDays } from 'lucide-react';
+import { Flame, CheckCircle2, Circle, ChevronLeft, ChevronRight, PenLine, Send, Plus, GripVertical, Trash2, X, Star, CalendarDays, ArrowUp, ArrowDown } from 'lucide-react';
 import {
   createSchedule,
   deleteSchedule,
@@ -141,6 +141,10 @@ export default function DailyPlanner({
     const currentMonday = startOfLocalWeek(currentDate);
     const daysDiff = Math.round((targetMonday - currentMonday) / 86400000);
 
+    cancelledEditRef.current = true;
+    setEditingItem(null);
+    setDragItem(null);
+    setDragOverItem(null);
     setSelectedDateStr(dateStr);
     setWeekOffset(daysDiff);
     onDateChange?.(dateStr);
@@ -158,6 +162,12 @@ export default function DailyPlanner({
 
   // Inline edit state
   const [editingItem, setEditingItem] = useState(null);
+  const [taskError, setTaskError] = useState(false);
+  const [isSavingTask, setIsSavingTask] = useState(false);
+  const [pendingTaskIds, setPendingTaskIds] = useState(new Set());
+  const pendingTaskIdsRef = useRef(new Set());
+  const taskMutationRef = useRef(false);
+  const cancelledEditRef = useRef(false);
   const [isResolvingPastTask, setIsResolvingPastTask] = useState(false);
   const resolvingPastTaskRef = useRef(false);
 
@@ -166,8 +176,6 @@ export default function DailyPlanner({
   const [dragOverItem, setDragOverItem] = useState(null);
 
   // Drag tracking refs
-  const droppedOnValidTarget = useRef(false);
-  const dragCancelled = useRef(false);
   const taskListRef = useRef(null);
   const calendarStripRef = useRef(null);
   const streakCloseRef = useRef(null);
@@ -235,25 +243,19 @@ export default function DailyPlanner({
 
   const setActiveFiles = useCallback((updatedFiles) => {
     setFilesData((currentFilesData) => {
+      const currentByDate = currentFilesData.byDate || currentFilesData.yesterday || {};
+      const currentFiles = activeTarget === 'byDate'
+        ? currentByDate[selectedDateStr] || []
+        : currentFilesData[activeTarget] || [];
+      const nextFiles = typeof updatedFiles === 'function' ? updatedFiles(currentFiles) : updatedFiles;
       if (activeTarget !== 'byDate') {
-        return { ...currentFilesData, [activeTarget]: updatedFiles };
+        return { ...currentFilesData, [activeTarget]: nextFiles };
       }
 
-      const currentByDate = currentFilesData.byDate || currentFilesData.yesterday || {};
-      const nextByDate = { ...currentByDate, [selectedDateStr]: updatedFiles };
+      const nextByDate = { ...currentByDate, [selectedDateStr]: nextFiles };
       return { ...currentFilesData, byDate: nextByDate, yesterday: nextByDate };
     });
   }, [activeTarget, selectedDateStr, setFilesData]);
-
-  // Escape key detection during drag
-  useEffect(() => {
-    if (!dragItem) return;
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') dragCancelled.current = true;
-    };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, [dragItem]);
 
   useEffect(() => {
     if (freqTrigger <= handledFreqTriggerRef.current) return undefined;
@@ -280,29 +282,6 @@ export default function DailyPlanner({
       isMounted = false;
     };
   }, [freqTrigger]);
-
-  // Document-level dragover: detect outside drop zone — direct DOM manipulation (no re-render)
-  useEffect(() => {
-    const taskListElement = taskListRef.current;
-
-    if (!dragItem || dragItem.type !== 'active' || !canEdit) {
-      taskListElement?.classList.remove('drag-delete-zone');
-      return;
-    }
-    const handleDocDragOver = (e) => {
-      const el = taskListRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const outside = e.clientX < rect.left || e.clientX > rect.right ||
-                      e.clientY < rect.top  || e.clientY > rect.bottom;
-      el.classList.toggle('drag-delete-zone', outside);
-    };
-    document.addEventListener('dragover', handleDocDragOver);
-    return () => {
-      document.removeEventListener('dragover', handleDocDragOver);
-      taskListElement?.classList.remove('drag-delete-zone');
-    };
-  }, [dragItem, canEdit]);
 
   const stats = useMemo(() => {
     let totalChecked = 0, totalItems = 0;
@@ -341,33 +320,67 @@ export default function DailyPlanner({
   const alreadyFired = fireDays[todayStr];
 
   // --- Task Interaction ---
+  const updateTaskStatus = (file, scheduleId, checked) => {
+    setActiveFiles((currentFiles) => currentFiles.map((currentFile) => {
+      if (currentFile.path !== file.path) return currentFile;
+      const rowIndex = currentFile.scheduleRows?.findIndex((row) => row.id === scheduleId);
+      if (rowIndex == null || rowIndex < 0) return currentFile;
+      const lines = currentFile.content.split('\n');
+      lines[rowIndex] = lines[rowIndex].replace(/^(\s*-\s*)\[[ xX]\]/, `$1[${checked ? 'x' : ' '}]`);
+      return {
+        ...currentFile,
+        content: lines.join('\n'),
+        scheduleRows: currentFile.scheduleRows.map((row) => row.id === scheduleId
+          ? { ...row, status: checked ? 'completed' : 'active' }
+          : row),
+      };
+    }));
+  };
+
   const toggleLineByIndex = async (fileIndex, lineIndex, currentChecked) => {
-    if (!canEdit) return;
+    if (!canEdit || taskMutationRef.current) return;
     const file = activeFiles[fileIndex];
-    if (!file) return;
+    const scheduleId = file?.scheduleRows?.[lineIndex]?.id;
+    if (!scheduleId || pendingTaskIdsRef.current.has(scheduleId)) return;
 
-    const contentLines = file.content.split('\n');
-    let targetLine = contentLines[lineIndex];
-
-    if (!currentChecked) {
-      targetLine = targetLine.replace(/^(\s*)-\s*\[\s\]/, '$1- [x]');
-    } else {
-      targetLine = targetLine.replace(/^(\s*)-\s*\[[xX]\]/, '$1- [ ]');
-    }
-
-    contentLines[lineIndex] = targetLine;
-    const newContent = contentLines.join('\n');
-
-    const updatedFiles = [...activeFiles];
-    updatedFiles[fileIndex] = { ...file, content: newContent };
-    setActiveFiles(updatedFiles);
-
-    const res = await updateSchedule({ filepath: file.path, content: newContent });
-    if (!res || !res.success) {
-      console.error('Failed to persist checkbox state.');
-      loadContent();
-    } else {
+    pendingTaskIdsRef.current.add(scheduleId);
+    setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+    setTaskError(false);
+    updateTaskStatus(file, scheduleId, !currentChecked);
+    try {
+      await updateSchedule(scheduleId, { status: currentChecked ? 'active' : 'completed' });
+      updateTaskStatus(file, scheduleId, !currentChecked);
       trackEvent('task_check_planner', { checked: !currentChecked, target: activeTarget });
+    } catch (error) {
+      console.error('Failed to persist checkbox state.', error);
+      updateTaskStatus(file, scheduleId, currentChecked);
+      setTaskError(true);
+    } finally {
+      pendingTaskIdsRef.current.delete(scheduleId);
+      setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+    }
+  };
+
+  const persistTaskMutation = async (request, optimisticFiles) => {
+    if (taskMutationRef.current || pendingTaskIdsRef.current.size > 0) return false;
+    taskMutationRef.current = true;
+    setIsSavingTask(true);
+    setTaskError(false);
+    if (optimisticFiles) setActiveFiles(optimisticFiles);
+    try {
+      const result = await request();
+      if (result?.files) setFilesData(result.files);
+      else await loadContent();
+      return true;
+    } catch (error) {
+      console.error('Failed to save task changes.', error);
+      if (error.files) setFilesData(error.files);
+      else if (optimisticFiles) setActiveFiles(activeFiles);
+      setTaskError(true);
+      return false;
+    } finally {
+      taskMutationRef.current = false;
+      setIsSavingTask(false);
     }
   };
 
@@ -375,77 +388,81 @@ export default function DailyPlanner({
     e.preventDefault();
     if (!quickTaskText.trim() || !canEdit || isSubmittingQuickTask) return;
     setIsSubmittingQuickTask(true);
-
-    try {
-      const taskLine = `- [ ] ${quickTaskText.trim()}\n`;
-      if (activeFiles.length > 0) {
-        const targetFile = activeFiles[0];
-        const newContent = (targetFile.content || '').trim() + '\n' + taskLine;
-        await updateSchedule({ filepath: targetFile.path, content: newContent });
-      } else {
-        await createSchedule({ taskLine, targetDate: selectedDateStr });
-      }
-
+    const saved = await persistTaskMutation(() => createSchedule({
+      taskLine: `- [ ] ${quickTaskText.trim()}\n`,
+      targetDate: selectedDateStr,
+    }));
+    if (saved) {
       setQuickTaskText('');
-      await loadContent();
       trackEvent('task_quick_add', { target: activeTarget });
-    } catch (err) {
-      console.error("Failed to quick add task", err);
-    } finally {
-      setIsSubmittingQuickTask(false);
     }
+    setIsSubmittingQuickTask(false);
+  };
+
+  const startInlineEdit = (fileIndex, lineIndex, text) => {
+    if (!canEdit || taskMutationRef.current || pendingTaskIdsRef.current.size > 0) return;
+    cancelledEditRef.current = false;
+    setEditingItem({ fileIndex, lineIndex, text });
   };
 
   const saveInlineEdit = async (fileIndex, lineIndex, newText) => {
-    if (!canEdit) return;
+    if (cancelledEditRef.current || !canEdit || taskMutationRef.current) return;
     const file = activeFiles[fileIndex];
-    if (!file) return;
-
-    const contentLines = file.content.split('\n');
-    let targetLine = contentLines[lineIndex];
-    targetLine = targetLine.replace(/^(\s*-\s*\[(?: |x|X)\]\s*).*$/, `$1${newText}`);
-    contentLines[lineIndex] = targetLine;
-    const newContent = contentLines.join('\n');
-
-    const updatedFiles = [...activeFiles];
-    updatedFiles[fileIndex] = { ...file, content: newContent };
-    setActiveFiles(updatedFiles);
-
-    const res = await updateSchedule({ filepath: file.path, content: newContent });
-    if (!res || !res.success) {
-      console.error('Failed to persist inline edit.');
-      loadContent();
-    } else {
+    const row = file?.scheduleRows?.[lineIndex];
+    const title = newText.trim();
+    if (!row || !title || title === row.title) {
+      setEditingItem(null);
+      return;
+    }
+    const lines = file.content.split('\n');
+    lines[lineIndex] = lines[lineIndex].replace(/^(\s*-\s*\[(?: |x|X)\]\s*).*$/, (_, prefix) => `${prefix}${title}`);
+    const updatedFiles = activeFiles.map((item) => item.path === file.path
+      ? { ...file, content: lines.join('\n'), scheduleRows: file.scheduleRows.map((item) => item.id === row.id ? { ...item, title } : item) }
+      : item);
+    const saved = await persistTaskMutation(() => updateSchedule(row.id, { title }), updatedFiles);
+    if (saved) {
+      setEditingItem(null);
       trackEvent('task_inline_edit');
     }
-    setEditingItem(null);
+  };
+
+  const reorderTask = async (fileIndex, sourceLineIndex, targetLineIndex) => {
+    if (!canEdit || sourceLineIndex === targetLineIndex) return;
+    const file = activeFiles[fileIndex];
+    if (!file?.scheduleRows?.[sourceLineIndex] || !file.scheduleRows[targetLineIndex]) return;
+    const rows = [...file.scheduleRows];
+    const [movedRow] = rows.splice(sourceLineIndex, 1);
+    rows.splice(targetLineIndex, 0, movedRow);
+    const lines = file.content.split('\n');
+    const [movedLine] = lines.splice(sourceLineIndex, 1);
+    lines.splice(targetLineIndex, 0, movedLine);
+    const updatedFiles = activeFiles.map((item) => item.path === file.path
+      ? { ...file, content: lines.join('\n'), scheduleRows: rows, scheduleIds: rows.map((row) => row.id) }
+      : item);
+    await persistTaskMutation(() => updateSchedule({ filepath: file.path, scheduleIds: rows.map((row) => row.id) }), updatedFiles);
   };
 
   // --- Drag and Drop ---
   const handleDragStart = (e, fileIndex, lineIndex, text) => {
-    if (!canEdit) return;
-    droppedOnValidTarget.current = false;
-    dragCancelled.current = false;
-    setDragItem({ type: 'active', fileIndex, lineIndex, text });
-    e.dataTransfer.effectAllowed = 'move';
-    setTimeout(() => {
-      e.currentTarget.classList.add('dragging');
-    }, 0);
-  };
-
-  const handleUnfinishedDragStart = (e, task) => {
-    if (resolvingPastTaskRef.current) {
+    if (!canEdit || taskMutationRef.current || pendingTaskIdsRef.current.size > 0) {
       e.preventDefault();
       return;
     }
-    droppedOnValidTarget.current = false;
-    dragCancelled.current = false;
+    setDragItem({ type: 'active', fileIndex, lineIndex, text });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', text);
+    const row = e.currentTarget.closest('li');
+    if (row) e.dataTransfer.setDragImage?.(row, 20, 20);
+  };
+
+  const handleUnfinishedDragStart = (e, task) => {
+    if (resolvingPastTaskRef.current || taskMutationRef.current || pendingTaskIdsRef.current.size > 0) {
+      e.preventDefault();
+      return;
+    }
     setDragItem({ type: 'unfinished', task });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', task.text);
-    setTimeout(() => {
-      e.currentTarget.classList.add('dragging');
-    }, 0);
   };
 
   const handleDragOver = (e, fileIndex, lineIndex) => {
@@ -457,135 +474,64 @@ export default function DailyPlanner({
       }
       return;
     }
-    if (dragItem.type !== 'active') return;
-    if (dragItem.fileIndex !== fileIndex) return;
+    if (dragItem.type !== 'active' || dragItem.fileIndex !== fileIndex) return;
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverItem({ fileIndex, lineIndex });
   };
 
-  const handleDragEnd = async (e) => {
-    e.currentTarget.classList.remove('dragging');
-    taskListRef.current?.classList.remove('drag-delete-zone', 'unfinished-drop-target');
-    const item = dragItem;
+  const handleDragEnd = () => {
     setDragItem(null);
     setDragOverItem(null);
-
-    if (!item || !canEdit) {
-      droppedOnValidTarget.current = false;
-      dragCancelled.current = false;
-      return;
-    }
-
-    // 태스크 리스트 위에 드롭되지 않았고 Escape도 아닌 경우 → 휴지통으로
-    if (item.type === 'active' && !droppedOnValidTarget.current && !dragCancelled.current) {
-      await handleDeleteTask(item.fileIndex, item.lineIndex);
-    }
-
-    droppedOnValidTarget.current = false;
-    dragCancelled.current = false;
   };
 
   const handleTaskListDragOver = (e) => {
     if (!canEdit || !dragItem) return;
-    if (dragItem.type === 'unfinished') {
-      if (selectedDateStr !== todayStr) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      return;
-    }
-    if (dragItem.type === 'active') {
-      e.preventDefault();
-    }
+    if (dragItem.type === 'unfinished' && selectedDateStr !== todayStr) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDropOnTaskList = async (e) => {
     if (!canEdit || !dragItem) return;
     e.preventDefault();
-    droppedOnValidTarget.current = true;
-
     const item = dragItem;
-    setDragItem(null);
-    setDragOverItem(null);
-
+    handleDragEnd();
     if (item.type === 'unfinished' && selectedDateStr === todayStr) {
       await handleMigrateTask(item.task);
+    } else if (item.type === 'active') {
+      const lastLineIndex = (activeFiles[item.fileIndex]?.scheduleRows?.length || 1) - 1;
+      await reorderTask(item.fileIndex, item.lineIndex, lastLineIndex);
     }
   };
 
   const handleDropOnTask = async (e, targetFileIndex, targetLineIndex) => {
     e.preventDefault();
     e.stopPropagation();
-    droppedOnValidTarget.current = true;
-
     if (!canEdit || !dragItem) return;
-
-    if (dragItem.type === 'unfinished') {
-      if (selectedDateStr === todayStr) {
-        const task = dragItem.task;
-        setDragItem(null);
-        setDragOverItem(null);
-        await handleMigrateTask(task);
-      }
+    const item = dragItem;
+    handleDragEnd();
+    if (item.type === 'unfinished') {
+      if (selectedDateStr === todayStr) await handleMigrateTask(item.task);
       return;
     }
-
-    if (dragItem.type !== 'active' || dragItem.fileIndex !== targetFileIndex) return;
-    if (dragItem.lineIndex === targetLineIndex) return;
-
-    const file = activeFiles[targetFileIndex];
-    if (!file) return;
-
-    const contentLines = file.content.split('\n');
-    const draggedLine = contentLines[dragItem.lineIndex];
-    contentLines.splice(dragItem.lineIndex, 1);
-    const insertIndex = targetLineIndex > dragItem.lineIndex ? targetLineIndex : targetLineIndex;
-    contentLines.splice(insertIndex, 0, draggedLine);
-
-    const newContent = contentLines.join('\n');
-    const updatedFiles = [...activeFiles];
-    updatedFiles[targetFileIndex] = { ...file, content: newContent };
-    setActiveFiles(updatedFiles);
-
-    await updateSchedule({ filepath: file.path, content: newContent });
+    if (item.type === 'active' && item.fileIndex === targetFileIndex) {
+      await reorderTask(targetFileIndex, item.lineIndex, targetLineIndex);
+    }
   };
 
   const handleDeleteTask = async (fileIndex, lineIndex) => {
     if (!canEdit) return;
-
     const file = activeFiles[fileIndex];
-    if (!file) return;
-
-    const contentLines = file.content.split('\n');
-    const removedLine = contentLines[lineIndex];
-    contentLines.splice(lineIndex, 1);
-
-    const newContent = contentLines.join('\n');
-    const updatedFiles = [...activeFiles];
-    updatedFiles[fileIndex] = { ...file, content: newContent };
-    setActiveFiles(updatedFiles);
-
-    const scheduleId = file.scheduleRows?.[lineIndex]?.id;
-    if (scheduleId) {
-      try {
-        await deleteSchedule({ id: scheduleId });
-        await loadContent();
-      } catch (err) {
-        console.error("Failed to add to trash", err);
-        await loadContent();
-      }
-      return;
-    }
-
-    await updateSchedule({ filepath: file.path, content: newContent });
-    await handleTrashTask(removedLine, file.filename);
-  };
-
-  const handleTrashTask = async (taskText, filename) => {
-    try {
-      await deleteSchedule({ taskText, filename });
-    } catch (err) {
-      console.error("Failed to add to trash", err);
-    }
+    const scheduleId = file?.scheduleRows?.[lineIndex]?.id;
+    if (!scheduleId) return;
+    const lines = file.content.split('\n');
+    lines.splice(lineIndex, 1);
+    const rows = file.scheduleRows.filter((row) => row.id !== scheduleId);
+    const updatedFiles = activeFiles.map((item) => item.path === file.path
+      ? { ...file, content: lines.join('\n'), scheduleRows: rows, scheduleIds: rows.map((row) => row.id) }
+      : item);
+    await persistTaskMutation(() => deleteSchedule({ id: scheduleId }), updatedFiles);
   };
 
   // --- Unfinished Tasks ---
@@ -614,60 +560,34 @@ export default function DailyPlanner({
 
   const handleMigrateTask = async (task) => {
     if (resolvingPastTaskRef.current) return;
-
     resolvingPastTaskRef.current = true;
     setIsResolvingPastTask(true);
-    try {
-      const result = await updateSchedule({
-        sourcePath: task.filePath,
-        sourceDate: task.date,
-        lineIndex: task.lineIndex,
-        taskText: task.text,
-      });
-
-      if (result?.files) {
-        setFilesData(result.files);
-      } else {
-        await loadContent();
-      }
-      trackEvent('task_migrate');
-    } catch (err) {
-      console.error("Failed to migrate task", err);
-      await loadContent();
-    } finally {
-      resolvingPastTaskRef.current = false;
-      setIsResolvingPastTask(false);
-    }
+    const saved = await persistTaskMutation(() => updateSchedule({
+      sourcePath: task.filePath,
+      sourceDate: task.date,
+      lineIndex: task.lineIndex,
+      taskText: task.text,
+    }));
+    if (saved) trackEvent('task_migrate');
+    resolvingPastTaskRef.current = false;
+    setIsResolvingPastTask(false);
   };
 
   const handleResolvePastTask = async (task, { targetDate, resolution } = {}) => {
     if (resolvingPastTaskRef.current) return;
-
     resolvingPastTaskRef.current = true;
     setIsResolvingPastTask(true);
-    try {
-      const result = await updateSchedule({
-        sourcePath: task.filePath,
-        sourceDate: task.date,
-        lineIndex: task.lineIndex,
-        taskText: task.text,
-        targetDate,
-        resolution,
-      });
-
-      if (result?.files) {
-        setFilesData(result.files);
-      } else {
-        await loadContent();
-      }
-      trackEvent(resolution === 'released' ? 'task_released' : 'task_rescheduled');
-    } catch (err) {
-      console.error('Failed to resolve past task', err);
-      await loadContent();
-    } finally {
-      resolvingPastTaskRef.current = false;
-      setIsResolvingPastTask(false);
-    }
+    const saved = await persistTaskMutation(() => updateSchedule({
+      sourcePath: task.filePath,
+      sourceDate: task.date,
+      lineIndex: task.lineIndex,
+      taskText: task.text,
+      targetDate,
+      resolution,
+    }));
+    if (saved) trackEvent(resolution === 'released' ? 'task_released' : 'task_rescheduled');
+    resolvingPastTaskRef.current = false;
+    setIsResolvingPastTask(false);
   };
 
   const toggleFreqTask = (idx) => {
@@ -744,15 +664,14 @@ export default function DailyPlanner({
   const handleApplyFreqTasks = async () => {
     const selected = frequentTasks.filter((_, i) => selectedFreqIds.has(i));
     if (selected.length === 0 || !canEdit) return;
-    try {
-      await createSchedule({ frequentTasks: selected, targetDate: selectedDateStr });
-      await loadContent();
+    const saved = await persistTaskMutation(() => createSchedule({ frequentTasks: selected, targetDate: selectedDateStr }));
+    if (saved) {
       closeFreqModal();
       trackEvent('freq_tasks_added_daily');
-    } catch (err) {
-      console.error("Failed to add frequent tasks", err);
     }
   };
+
+  const taskChangesPending = isSavingTask || pendingTaskIds.size > 0 || isResolvingPastTask;
 
   const renderTaskFiles = () => (
     <div className="task-files-container">
@@ -781,24 +700,40 @@ export default function DailyPlanner({
 
                 return (
                   <li
-                    key={lineIndex}
-                    className={`planner-task-item ${isChecked ? 'checked' : ''} ${isDragOverTop ? 'drag-over-top' : ''} ${isDragOverBottom ? 'drag-over-bottom' : ''}`}
-                    draggable={canEdit && !isEditingThis}
-                    onDragStart={(e) => handleDragStart(e, fileIndex, lineIndex, text)}
+                    key={file.scheduleRows?.[lineIndex]?.id || lineIndex}
+                    className={`planner-task-item ${isChecked ? 'checked' : ''} ${isActiveDrag && dragItem.fileIndex === fileIndex && dragItem.lineIndex === lineIndex ? 'dragging' : ''} ${isDragOverTop ? 'drag-over-top' : ''} ${isDragOverBottom ? 'drag-over-bottom' : ''}`}
                     onDragOver={(e) => handleDragOver(e, fileIndex, lineIndex)}
                     onDragEnd={handleDragEnd}
                     onDrop={(e) => handleDropOnTask(e, fileIndex, lineIndex)}
                   >
                     {canEdit && (
-                      <div className="drag-handle" title={t(lang, 'dragToReorder')}>
+                      <button
+                        type="button"
+                        className="drag-handle"
+                        title={t(lang, 'dragToReorder')}
+                        aria-label={`${text}: ${t(lang, 'dragToReorder')}`}
+                        disabled={taskChangesPending || isEditingThis}
+                        draggable={!taskChangesPending && !isEditingThis}
+                        onDragStart={(e) => handleDragStart(e, fileIndex, lineIndex, text)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            reorderTask(fileIndex, lineIndex, lineIndex + (e.key === 'ArrowUp' ? -1 : 1));
+                          }
+                        }}
+                      >
                         <GripVertical size={16} />
-                      </div>
+                      </button>
                     )}
 
                     <button
+                      type="button"
                       className="task-check-btn"
+                      role="checkbox"
+                      aria-checked={isChecked}
+                      aria-label={`${text}: ${t(lang, isChecked ? 'markTaskIncomplete' : 'markTaskComplete')}`}
                       onClick={() => toggleLineByIndex(fileIndex, lineIndex, isChecked)}
-                      disabled={!canEdit}
+                      disabled={!canEdit || isSavingTask || isResolvingPastTask || isEditingThis || pendingTaskIds.has(file.scheduleRows?.[lineIndex]?.id)}
                     >
                       {isChecked ? <CheckCircle2 size={18} className="done" /> : <Circle size={18} />}
                     </button>
@@ -809,12 +744,16 @@ export default function DailyPlanner({
                         className="task-inline-input"
                         autoFocus
                         defaultValue={text}
+                        aria-label={`${text}: ${t(lang, 'editTask')}`}
+                        disabled={isSavingTask}
                         onBlur={(e) => saveInlineEdit(fileIndex, lineIndex, e.target.value)}
                         onKeyDown={(e) => {
+                          if (e.nativeEvent.isComposing) return;
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            saveInlineEdit(fileIndex, lineIndex, e.target.value);
+                            e.currentTarget.blur();
                           } else if (e.key === 'Escape') {
+                            cancelledEditRef.current = true;
                             setEditingItem(null);
                           }
                         }}
@@ -822,7 +761,7 @@ export default function DailyPlanner({
                     ) : (
                       <span
                         className="task-text"
-                        onDoubleClick={() => { if (canEdit) setEditingItem({ fileIndex, lineIndex, text }); }}
+                        onDoubleClick={() => startInlineEdit(fileIndex, lineIndex, text)}
                       >
                         {text}
                       </span>
@@ -830,10 +769,16 @@ export default function DailyPlanner({
 
                     {canEdit && !isEditingThis && (
                       <>
-                        <button className="task-edit-trigger" onClick={() => setEditingItem({ fileIndex, lineIndex, text })}>
+                        <button type="button" className="task-reorder-btn" disabled={taskChangesPending || lineIndex === 0} onClick={() => reorderTask(fileIndex, lineIndex, lineIndex - 1)} title={t(lang, 'moveTaskUp')} aria-label={`${text}: ${t(lang, 'moveTaskUp')}`}>
+                          <ArrowUp size={14} />
+                        </button>
+                        <button type="button" className="task-reorder-btn" disabled={taskChangesPending || lineIndex >= file.scheduleRows.length - 1} onClick={() => reorderTask(fileIndex, lineIndex, lineIndex + 1)} title={t(lang, 'moveTaskDown')} aria-label={`${text}: ${t(lang, 'moveTaskDown')}`}>
+                          <ArrowDown size={14} />
+                        </button>
+                        <button type="button" className="task-edit-trigger" disabled={taskChangesPending} onClick={() => startInlineEdit(fileIndex, lineIndex, text)} title={t(lang, 'editTask')} aria-label={`${text}: ${t(lang, 'editTask')}`}>
                           <PenLine size={14} />
                         </button>
-                        <button className="task-delete-btn" onClick={() => handleDeleteTask(fileIndex, lineIndex)} title={t(lang, 'deleteTask')}>
+                        <button type="button" className="task-delete-btn" disabled={taskChangesPending} onClick={() => handleDeleteTask(fileIndex, lineIndex)} title={t(lang, 'deleteTask')} aria-label={`${text}: ${t(lang, 'deleteTask')}`} >
                           <Trash2 size={16} />
                         </button>
                       </>
@@ -878,7 +823,7 @@ export default function DailyPlanner({
                 <button
                   type="button"
                   className="past-task-action"
-                  disabled={isResolvingPastTask}
+                  disabled={taskChangesPending}
                   onClick={() => handleResolvePastTask(item, { targetDate: todayStr })}
                   title={t(lang, 'migrateTask')}
                   aria-label={`${item.text}: ${t(lang, 'migrateTask')}`}
@@ -890,7 +835,7 @@ export default function DailyPlanner({
                   <input
                     type="date"
                     min={todayStr}
-                    disabled={isResolvingPastTask}
+                    disabled={taskChangesPending}
                     aria-label={`${item.text}: ${t(lang, 'rescheduleTask')}`}
                     onChange={(event) => {
                       const nextDate = event.target.value;
@@ -904,7 +849,7 @@ export default function DailyPlanner({
                 <button
                   type="button"
                   className="past-task-action"
-                  disabled={isResolvingPastTask}
+                  disabled={taskChangesPending}
                   onClick={() => handleResolvePastTask(item, { resolution: 'released' })}
                   aria-label={`${item.text}: ${t(lang, 'releaseTask')}`}
                 >
@@ -1127,6 +1072,12 @@ export default function DailyPlanner({
             )}
           </div>
 
+          {(taskError || taskChangesPending) && (
+            <p className={`task-save-status ${taskError ? 'error' : ''}`} role={taskError ? 'alert' : 'status'}>
+              {t(lang, taskError ? 'taskSaveError' : 'taskSaving')}
+            </p>
+          )}
+
           {canEdit && (
             <form className="quick-add-bar glass-card" onSubmit={handleQuickAddSubmit}>
               <Plus size={16} className="quick-add-icon" />
@@ -1135,9 +1086,9 @@ export default function DailyPlanner({
                 placeholder={t(lang, 'quickAddPlaceholder')}
                 value={quickTaskText}
                 onChange={(e) => setQuickTaskText(e.target.value)}
-                disabled={isSubmittingQuickTask}
+                disabled={isSubmittingQuickTask || isSavingTask}
               />
-              <button type="submit" disabled={!quickTaskText.trim() || isSubmittingQuickTask} className="quick-add-btn">
+              <button type="submit" disabled={!quickTaskText.trim() || isSubmittingQuickTask || taskChangesPending} className="quick-add-btn">
                 <Send size={14} />
               </button>
             </form>
@@ -1220,16 +1171,14 @@ export default function DailyPlanner({
                       <li
                         key={i}
                         className="planner-task-item unfinished-task-row"
-                        draggable={!isResolvingPastTask}
-                        onDragStart={(e) => handleUnfinishedDragStart(e, task)}
                         onDragEnd={handleDragEnd}
                         title={t(lang, 'migrateTask')}
                       >
-                        <div className="drag-handle"><GripVertical size={16} /></div>
+                        <span className="drag-handle" draggable={!taskChangesPending} onDragStart={(e) => handleUnfinishedDragStart(e, task)}><GripVertical size={16} /></span>
                         <span className="task-text unfinished-task-text">{task.text}</span>
                         <button
                           className="icon-btn unfinished-migrate-btn"
-                          disabled={isResolvingPastTask}
+                          disabled={taskChangesPending}
                           onClick={() => handleMigrateTask(task)}
                           title={t(lang, 'migrateTask')}
                           aria-label={`${task.text}: ${t(lang, 'migrateTask')}`}
@@ -1341,7 +1290,7 @@ export default function DailyPlanner({
               <button
                 className="freq-apply-btn"
                 onClick={handleApplyFreqTasks}
-                disabled={selectedFreqIds.size === 0 || !canEdit}
+                disabled={selectedFreqIds.size === 0 || !canEdit || taskChangesPending}
               >
                 {t(lang, 'freqAdd')} {selectedFreqIds.size > 0 ? `(${selectedFreqIds.size})` : ''}
               </button>

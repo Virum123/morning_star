@@ -126,23 +126,6 @@
   position: relative;
 }
 
-.planner-task-list.drag-delete-zone {
-  border: 2px solid #e05555 !important;
-  box-shadow: 0 0 0 3px rgba(224, 85, 85, 0.15);
-}
-
-.planner-task-list.drag-delete-zone::after {
-  content: '🗑️ 놓으면 삭제';
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  font-size: 0.75rem;
-  color: #e05555;
-  font-weight: 600;
-  pointer-events: none;
-  animation: fadeIn 0.15s ease;
-}
-
 .planner-task-list.unfinished-drop-target {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px var(--accent-glow);
@@ -207,13 +190,8 @@
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: 7px;
-  transition: all 0.2s ease;
-  cursor: grab;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
   position: relative;
-}
-
-.planner-task-item:active {
-  cursor: grabbing;
 }
 
 .planner-task-item:hover {
@@ -2332,5 +2310,208 @@
 
   .tab-row-freq-btn {
     margin-left: 0;
+  }
+}
+
+/* Weekly interaction improvements */
+.weekly-save-status {
+  min-height: 18px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.weekly-save-status.error {
+  color: var(--danger-color, #dc5656);
+}
+
+.weekly-task-item {
+  align-items: center;
+  flex-wrap: wrap;
+  cursor: default;
+  user-select: text;
+}
+
+.weekly-task-item.checked {
+  text-decoration: none;
+}
+
+.weekly-task-item.checked .task-text {
+  text-decoration: line-through;
+}
+
+.weekly-task-item .task-text {
+  flex: 1 1 50px;
+}
+
+.weekly-drag-handle {
+  display: grid;
+  min-width: 18px;
+  min-height: 30px;
+  place-items: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.weekly-drag-handle:active {
+  cursor: grabbing;
+}
+
+.weekly-drag-handle .weekly-grip {
+  margin: 0;
+}
+
+.weekly-task-check,
+.weekly-move-task {
+  position: relative;
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.weekly-task-check:hover:not(:disabled),
+.weekly-move-task:hover:not(.disabled),
+.weekly-task-check[aria-checked="true"] {
+  color: var(--accent-color);
+  background: var(--pill-active-bg);
+}
+
+.weekly-task-check:focus-visible,
+.weekly-move-task:focus-within {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.weekly-task-check:disabled,
+.weekly-drag-handle.disabled,
+.weekly-move-task.disabled {
+  cursor: default;
+}
+
+.weekly-move-task {
+  margin-left: auto;
+}
+
+.weekly-move-task input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.weekly-move-task input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.weekly-move-task input:disabled {
+  cursor: default;
+}
+
+.weekly-day-col.drag-over-day {
+  border-width: 1px !important;
+  box-shadow: inset 0 0 0 1px var(--accent-color);
+}
+
+/* Daily task controls */
+.planner-task-item > .drag-handle {
+  flex-shrink: 0;
+  width: 28px;
+  min-height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+}
+
+.planner-task-item .task-check-btn {
+  width: 36px;
+  min-height: 36px;
+  border-radius: 7px;
+}
+
+.planner-task-item .task-check-btn:hover:not(:disabled) {
+  background: var(--sidebar-active-bg);
+}
+
+.task-reorder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.planner-task-item .task-edit-trigger,
+.planner-task-item .task-delete-btn {
+  min-width: 28px;
+  min-height: 32px;
+  flex-shrink: 0;
+}
+
+.planner-task-item:focus-within .task-edit-trigger,
+.planner-task-item:focus-within .task-delete-btn,
+.planner-task-item:focus-within .task-reorder-btn,
+.planner-task-item:hover .task-reorder-btn {
+  opacity: 1;
+}
+
+.planner-task-item button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.planner-task-item button:disabled {
+  cursor: default;
+}
+
+.task-reorder-btn:disabled {
+  visibility: hidden;
+}
+
+.planner-task-item .task-text,
+.planner-task-item .task-inline-input {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-save-status {
+  margin: 0;
+  padding: 2px 10px;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.task-save-status.error {
+  color: #e57979;
+}
+
+@media (hover: none) {
+  .planner-task-item .task-edit-trigger,
+  .planner-task-item .task-delete-btn,
+  .planner-task-item .task-reorder-btn {
+    opacity: 1;
   }
 }

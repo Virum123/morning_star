@@ -1,12 +1,14 @@
 # Morning Star ✨
 
-Morning Star is a desktop app that greets you with your Markdown-based to-do list at your chosen wake-up time. It started as a Windows background app and now also includes a macOS app build path, refreshed app branding, and mac-friendly local storage.
+Morning Star is a desktop app that greets you with your daily plan at your chosen wake-up time. Schedules and daily reflections are saved to your signed-in Supabase account. It started as a Windows background app and now also includes a macOS app build path and refreshed app branding.
 
 ## 🌟 Key Features
 - **Daily Auto-Migration:** Tomorrow's tasks move into Today when a new app day starts, and completed days are organized into a dated history.
-- **Planner Views:** Daily, weekly, and monthly views share the same local Markdown-backed task data.
+- **Planner Views:** Daily, weekly, and monthly views share the same schedules stored in Supabase.
+- **Daily Reflections:** Save a reflection, then browse saved entries by date and explicitly edit an existing entry. The editor clears after a successful save.
+- **Task Controls:** Check tasks in daily or weekly views, reorder daily tasks with the handle or move buttons, and move weekly tasks by dragging or selecting a date.
 - **Fast Task Entry:** Add one-off tasks from the planner or reuse Frequent Tasks across selected days.
-- **Local Persistence:** Checklist changes are written back to local Markdown files stored in the app data directory.
+- **Account Persistence:** Task changes, completion states, ordering, and daily reflections are saved to Supabase. Reordering or moving a task keeps its database identity.
 - **Desktop Startup:** Windows can run in background startup mode, while macOS packages as a `.app` bundle with a Desktop launcher.
 
 ## 🚀 How to Use
@@ -18,7 +20,9 @@ Morning Star is a desktop app that greets you with your Markdown-based to-do lis
 ## 🛠️ Tech Stack
 - **Backend/Host:** Python 3, `pywebview`, `pyinstaller`, Windows Registry startup integration.
 - **Frontend UI:** Vite, React 19, standard custom CSS (No Tailwind).
-- **Storage:** Local app data in `%LOCALAPPDATA%/MorningStar` on Windows and `~/Library/Application Support/MorningStar` on macOS.
+- **Storage:** Supabase stores schedules (`schedule_items`) and daily reflections (`daily_reflections`). Desktop settings and Frequent Tasks use local app data in `%LOCALAPPDATA%/MorningStar` on Windows and `~/Library/Application Support/MorningStar` on macOS.
+
+The React planner uses an in-memory checklist representation for rendering and task entry; it does not create separate Markdown files. Older Markdown file handlers remain in the Python host for compatibility, but the current planner reads and writes schedules through the Supabase repository.
 
 ## 🏗️ Building for Production
 
@@ -78,3 +82,16 @@ dist/Morning Star.app
 ```
 
 The Desktop `Morning Star.app` is refreshed as a hidden launcher that opens the latest packaged app bundle.
+
+## Validation
+
+Run the frontend interaction and storage regression tests, lint, and production build:
+```bash
+cd ui
+npm ci
+npm test
+npm run lint
+npm run build
+```
+
+The frontend tests use mocked repositories and do not write to a live Supabase database. Run the existing Python host regression tests from the project root with `python3 -m unittest discover -s tests -v`.

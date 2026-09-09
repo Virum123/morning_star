@@ -28,7 +28,7 @@ export async function getDailyReflections() {
   return normalizeDailyReflections(rows);
 }
 
-export async function saveDailyReflection(dateStr, content) {
+export async function saveDailyReflection(dateStr, content, { createOnly = false } = {}) {
   if (!localDateFromStr(dateStr)) {
     throw new Error('회고 날짜가 올바르지 않습니다.');
   }
@@ -42,7 +42,7 @@ export async function saveDailyReflection(dateStr, content) {
   }
 
   if (reflection.trim()) {
-    const savedReflection = await upsertDailyReflection(dateStr, reflection);
+    const savedReflection = await upsertDailyReflection(dateStr, reflection, { createOnly });
     return savedReflection?.content || reflection;
   }
 

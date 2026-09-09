@@ -224,6 +224,7 @@
 
 .daily-reflection-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
@@ -266,6 +267,102 @@
 .daily-reflection-save-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.daily-reflection-history {
+  margin-bottom: 24px;
+}
+
+.archive-load-error.daily-reflection-notice {
+  margin-bottom: 14px;
+}
+
+.daily-reflection-history-header,
+.daily-reflection-entry-header,
+.daily-reflection-notice,
+.daily-reflection-history-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.daily-reflection-history-header {
+  margin-bottom: 12px;
+}
+
+.daily-reflection-history-header .pane-desc {
+  margin-bottom: 0;
+}
+
+.daily-reflection-list {
+  display: grid;
+  gap: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.daily-reflection-entry {
+  padding: 12px 14px;
+  border: 1px solid var(--ornament-line);
+  border-radius: 10px;
+  background: var(--input-bg);
+}
+
+.daily-reflection-entry time {
+  color: var(--accent-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-reflection-content {
+  margin: 8px 0 0;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.daily-reflection-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid var(--input-border);
+  border-radius: 7px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.daily-reflection-secondary-btn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+}
+
+.daily-reflection-secondary-btn:focus-visible,
+.daily-reflection-save-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.daily-reflection-secondary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.daily-reflection-notice,
+.daily-reflection-editing {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.5;
 }
 
 /* files-grid, accordion-list are reused from existing files.css implicitly or we define them here */

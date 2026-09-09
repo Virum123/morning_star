@@ -6,6 +6,7 @@ import {
 } from '../utils/plannerData';
 import {
   bucketForDate,
+  dateStrToStartAt,
   getDateFromPlannerFilePath,
   mapPlannerTaskToScheduleInsert,
   mapPlannerTaskToSchedulePatch,
@@ -25,6 +26,16 @@ const FIRE_DAYS_STORAGE_KEY = 'ms_fire_days';
 const MIGRATED_UNFINISHED_STORAGE_KEY = 'ms_migrated_unfinished_tasks';
 
 let scheduleFileCache = new Map();
+let scheduleOperationQueue = Promise.resolve();
+let scheduleCacheNeedsRefresh = false;
+
+function queueScheduleOperation(operation) {
+  const result = scheduleOperationQueue.then(operation);
+  scheduleOperationQueue = result.catch(() => {
+    scheduleCacheNeedsRefresh = true;
+  });
+  return result;
+}
 
 function readJsonStorage(key, fallbackValue) {
   try {
@@ -132,19 +143,54 @@ async function loadSchedulesFromSupabase() {
   const filesData = mapRowsToPlannerFiles(rows);
   filesData.migratedUnfinishedTasks = getMigratedUnfinishedTasks();
   cacheFilesData(filesData);
+  scheduleCacheNeedsRefresh = false;
   return filesData;
 }
 
-export async function getSchedules() {
+function applyConfirmedScheduleChanges({ rows = [], deletedIds = [] } = {}) {
+  const rowsById = new Map([...scheduleFileCache.values()]
+    .flatMap((fileInfo) => fileInfo.rows)
+    .map((row) => [row.id, row]));
+  deletedIds.forEach((id) => rowsById.delete(id));
+  rows.forEach((row) => {
+    if (row.deleted_at) rowsById.delete(row.id);
+    else rowsById.set(row.id, row);
+  });
+  const files = mapRowsToPlannerFiles([...rowsById.values()]);
+  files.migratedUnfinishedTasks = getMigratedUnfinishedTasks();
+  cacheFilesData(files);
+  return files;
+}
+
+async function finishScheduleMutation(result, changes) {
+  const confirmedFiles = applyConfirmedScheduleChanges(changes);
   try {
-    return await loadSchedulesFromSupabase();
+    return { ...result, files: await loadSchedulesFromSupabase() };
   } catch (error) {
-    console.error('Failed to load schedules.', error);
-    throw error;
+    // The write was acknowledged by the DB. A failed refresh must not turn it
+    // into a failed save or invite the user to insert the same task again.
+    console.error('Schedule saved, but refreshing schedules failed.', error);
+    scheduleCacheNeedsRefresh = true;
+    return { ...result, files: confirmedFiles };
   }
 }
 
+async function throwScheduleMutationError(error, changes) {
+  const confirmedFiles = applyConfirmedScheduleChanges(changes);
+  try {
+    error.files = await loadSchedulesFromSupabase();
+  } catch {
+    error.files = confirmedFiles;
+  }
+  throw error;
+}
+
+export async function getSchedules() {
+  return queueScheduleOperation(loadSchedulesFromSupabase);
+}
+
 async function ensureFileInfo(filepath) {
+  if (scheduleCacheNeedsRefresh) await loadSchedulesFromSupabase();
   let fileInfo = scheduleFileCache.get(filepath);
   if (fileInfo) return fileInfo;
 
@@ -161,12 +207,73 @@ async function ensureFileInfo(filepath) {
 }
 
 async function getNextOrderIndex(dateStr) {
+  if (scheduleCacheNeedsRefresh) await loadSchedulesFromSupabase();
   let rows = getCachedRowsForDate(dateStr);
-  if (rows) return rows.length;
+  if (!rows) {
+    await loadSchedulesFromSupabase();
+    rows = getCachedRowsForDate(dateStr);
+  }
+  const dayStart = new Date(dateStrToStartAt(dateStr)).getTime();
+  return (rows || []).reduce((nextIndex, row) => {
+    const orderIndex = Math.floor((new Date(row.start_at).getTime() - dayStart) / 60000);
+    return Number.isFinite(orderIndex) ? Math.max(nextIndex, orderIndex + 1) : nextIndex;
+  }, 0);
+}
 
+function scheduleTimePatch(row, startAt) {
+  const patch = { start_at: startAt };
+  if (row.end_at) {
+    const duration = new Date(row.end_at).getTime() - new Date(row.start_at).getTime();
+    if (Number.isFinite(duration)) {
+      patch.end_at = new Date(new Date(startAt).getTime() + duration).toISOString();
+    }
+  }
+  return patch;
+}
+
+async function reorderSchedules(filepath, scheduleIds) {
   await loadSchedulesFromSupabase();
-  rows = getCachedRowsForDate(dateStr);
-  return rows ? rows.length : 0;
+  const fileInfo = await ensureFileInfo(filepath);
+  const rows = fileInfo?.rows || [];
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+  if (
+    !fileInfo?.dateStr
+    || scheduleIds.length !== rows.length
+    || new Set(scheduleIds).size !== rows.length
+    || scheduleIds.some((id) => !rowsById.has(id))
+  ) {
+    throw new Error('일정 목록이 변경되었습니다. 새로고침 후 다시 순서를 변경해 주세요.');
+  }
+
+  const updatedRows = [];
+  try {
+    for (let index = 0; index < scheduleIds.length; index += 1) {
+      const id = scheduleIds[index];
+      const startAt = dateStrToStartAt(fileInfo.dateStr, index);
+      if (new Date(rowsById.get(id).start_at).getTime() !== new Date(startAt).getTime()) {
+        updatedRows.push(await updateSupabaseSchedule(id, scheduleTimePatch(rowsById.get(id), startAt)));
+      }
+    }
+  } catch (error) {
+    return throwScheduleMutationError(error, { rows: updatedRows });
+  }
+
+  return finishScheduleMutation({ success: true }, { rows: updatedRows });
+}
+
+async function moveScheduleToDate(id, targetDate) {
+  await loadSchedulesFromSupabase();
+  const sourceRow = [...scheduleFileCache.values()]
+    .flatMap((fileInfo) => fileInfo.rows)
+    .find((row) => row.id === id);
+  if (!sourceRow) {
+    throw new Error('이 일정은 다른 곳에서 변경되었습니다. 새로고침 후 다시 확인해 주세요.');
+  }
+
+  const startAt = dateStrToStartAt(targetDate, await getNextOrderIndex(targetDate));
+  const patch = { ...scheduleTimePatch(sourceRow, startAt), bucket: bucketForDate(targetDate) };
+  const row = await updateSupabaseSchedule(id, patch);
+  return finishScheduleMutation({ success: true, row }, { rows: [row] });
 }
 
 async function createTasksForDate(tasks, dateStr, startOrderIndex) {
@@ -179,15 +286,20 @@ async function createTasksForDate(tasks, dateStr, startOrderIndex) {
     : await getNextOrderIndex(dateStr);
   const createdRows = [];
 
-  for (let index = 0; index < tasks.length; index += 1) {
-    const payload = mapPlannerTaskToScheduleInsert(tasks[index], {
-      dateStr,
-      orderIndex: baseOrderIndex + index,
-      bucket: bucketForDate(dateStr),
-    });
-    createdRows.push(await createSupabaseSchedule(payload));
+  try {
+    for (let index = 0; index < tasks.length; index += 1) {
+      const payload = mapPlannerTaskToScheduleInsert(tasks[index], {
+        dateStr,
+        orderIndex: baseOrderIndex + index,
+        bucket: bucketForDate(dateStr),
+      });
+      createdRows.push(await createSupabaseSchedule(payload));
+    }
+  } catch (error) {
+    return throwScheduleMutationError(error, { rows: createdRows });
   }
 
+  applyConfirmedScheduleChanges({ rows: createdRows });
   return createdRows;
 }
 
@@ -246,12 +358,11 @@ async function persistPlannerFileContent(filepath, content) {
     }
   }
 
-  return {
+  return finishScheduleMutation({
     success: true,
     content,
     rows: updatedRows,
-    files: await loadSchedulesFromSupabase(),
-  };
+  }, { rows: updatedRows, deletedIds: existingRows.slice(nextTasks.length).map((row) => row.id) });
 }
 
 async function migrateUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText, targetDate }) {
@@ -287,13 +398,12 @@ async function migrateUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskTe
     targetDate: resolvedTargetDate,
   });
 
-  return {
+  return finishScheduleMutation({
     success: true,
-    files: await loadSchedulesFromSupabase(),
     copied_task: taskText,
     already_exists: alreadyExists,
     target_date: resolvedTargetDate,
-  };
+  });
 }
 
 async function releaseUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskText }) {
@@ -312,14 +422,13 @@ async function releaseUnfinishedTask({ sourcePath, sourceDate, lineIndex, taskTe
     resolution: 'released',
   });
 
-  return {
+  return finishScheduleMutation({
     success: true,
-    files: await loadSchedulesFromSupabase(),
     released_task: taskText,
-  };
+  });
 }
 
-export async function createSchedule(schedule = {}) {
+async function createScheduleRequest(schedule = {}) {
   const { target, files, taskLine, targetDate, frequentTasks } = schedule;
 
   try {
@@ -338,20 +447,18 @@ export async function createSchedule(schedule = {}) {
         orderOffset += tasks.length;
       }
 
-      return {
+      return finishScheduleMutation({
         success: true,
         rows: createdRows,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { rows: createdRows });
     }
 
     if (typeof taskLine === 'string' && targetDate) {
       const row = await createTasksForDate([taskLineToPlannerTask(taskLine)], targetDate);
-      return {
+      return finishScheduleMutation({
         success: true,
         rows: row,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { rows: row });
     }
 
     if (Array.isArray(frequentTasks) && targetDate) {
@@ -359,11 +466,10 @@ export async function createSchedule(schedule = {}) {
         .map((title) => ({ title, checked: false }))
         .filter((task) => task.title?.trim());
       const rows = await createTasksForDate(tasks, targetDate);
-      return {
+      return finishScheduleMutation({
         success: true,
         rows,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { rows });
     }
 
     if (schedule.title || schedule.text || schedule.taskText) {
@@ -373,11 +479,10 @@ export async function createSchedule(schedule = {}) {
         checked: schedule.status === 'completed',
         ...schedule,
       }], dateStr);
-      return {
+      return finishScheduleMutation({
         success: true,
         rows,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { rows });
     }
 
     throw new Error('Unsupported schedule create request.');
@@ -387,15 +492,14 @@ export async function createSchedule(schedule = {}) {
   }
 }
 
-export async function updateSchedule(schedule = {}, patch = {}) {
+async function updateScheduleRequest(schedule = {}, patch = {}) {
   if (typeof schedule === 'string') {
     try {
       const row = await updateSupabaseSchedule(schedule, patch);
-      return {
+      return finishScheduleMutation({
         success: true,
         row,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { rows: [row] });
     } catch (error) {
       console.error('Failed to update schedule.', error);
       throw error;
@@ -417,6 +521,14 @@ export async function updateSchedule(schedule = {}, patch = {}) {
 
   try {
     const filePath = filepath || path;
+    if (filePath && Array.isArray(schedule.scheduleIds)) {
+      return await reorderSchedules(filePath, schedule.scheduleIds);
+    }
+
+    if (schedule.id && targetDate) {
+      return await moveScheduleToDate(schedule.id, targetDate);
+    }
+
     if (filePath && typeof content === 'string') {
       return await persistPlannerFileContent(filePath, content, { normalizeTasks });
     }
@@ -435,7 +547,7 @@ export async function updateSchedule(schedule = {}, patch = {}) {
   }
 }
 
-export async function deleteSchedule(schedule = {}) {
+async function deleteScheduleRequest(schedule = {}) {
   try {
     const id = typeof schedule === 'string'
       ? schedule
@@ -443,11 +555,10 @@ export async function deleteSchedule(schedule = {}) {
 
     if (id) {
       const row = await deleteSupabaseSchedule(id);
-      return {
+      return finishScheduleMutation({
         success: true,
         row,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { deletedIds: [id] });
     }
 
     const taskText = schedule.taskText || schedule.title || schedule.text;
@@ -459,10 +570,9 @@ export async function deleteSchedule(schedule = {}) {
       }
 
       await deleteSupabaseSchedule(row.id);
-      return {
+      return finishScheduleMutation({
         success: true,
-        files: await loadSchedulesFromSupabase(),
-      };
+      }, { deletedIds: [row.id] });
     }
 
     throw new Error('Unsupported schedule delete request.');
@@ -470,6 +580,18 @@ export async function deleteSchedule(schedule = {}) {
     console.error('Failed to delete schedule.', error);
     throw error;
   }
+}
+
+export function createSchedule(schedule = {}) {
+  return queueScheduleOperation(() => createScheduleRequest(schedule));
+}
+
+export function updateSchedule(schedule = {}, patch = {}) {
+  return queueScheduleOperation(() => updateScheduleRequest(schedule, patch));
+}
+
+export function deleteSchedule(schedule = {}) {
+  return queueScheduleOperation(() => deleteScheduleRequest(schedule));
 }
 
 export async function getScheduleActivityLog() {

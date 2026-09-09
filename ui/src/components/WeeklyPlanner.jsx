@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { GripVertical, Star, Plus, X, Trash2, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { GripVertical, Star, Plus, X, Trash2, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Circle } from 'lucide-react';
 import { localDateStr, appTodayDate, startOfLocalWeek } from '../utils/date';
 import {
   createSchedule,
@@ -9,7 +9,8 @@ import {
   updateSchedule,
 } from '../services/scheduleService';
 import { localeForLanguage, t } from '../utils/i18n';
-import { getDateBucket, getFilesForDate as getPlannerFilesForDate, parseChecklist } from '../utils/plannerData';
+import { getFilesForDate as getPlannerFilesForDate, parseChecklist } from '../utils/plannerData';
+import { dateStrToStartAt, mapRowsToPlannerFiles } from '../utils/scheduleMapper';
 import './Planner.css';
 
 export default function WeeklyPlanner({
@@ -26,6 +27,9 @@ export default function WeeklyPlanner({
 }) {
   const [dragItem, setDragItem] = useState(null);
   const [dragOverDay, setDragOverDay] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const savingRef = useRef(false);
 
   // Frequent tasks modal state
   const [showFreqModal, setShowFreqModal] = useState(false);
@@ -114,120 +118,104 @@ export default function WeeklyPlanner({
     };
   });
 
-  // --- Drag handlers ---
-  const handleDragStart = (e, dateStr, fileIndex, lineIndex, text, checked) => {
-    if (dateStr < todayStr) {
+  const patchVisibleTask = (id, patch) => {
+    setFilesData((current) => {
+      const files = [
+        ...(current.today || []),
+        ...(current.tomorrow || []),
+        ...Object.values(current.byDate || current.yesterday || {}).flat(),
+      ];
+      const rows = files.flatMap((file) => file.scheduleRows || [])
+        .map((row) => row.id === id ? { ...row, ...patch } : row);
+      const { today, tomorrow, byDate, yesterday } = mapRowsToPlannerFiles(rows, dateContext);
+      return { ...current, today, tomorrow, byDate, yesterday };
+    });
+  };
+
+  const saveTaskChange = async (id, optimisticPatch, persist) => {
+    if (!id || savingRef.current) return false;
+    savingRef.current = true;
+    setIsSaving(true);
+    setSaveError('');
+    const previousFiles = filesData;
+    patchVisibleTask(id, optimisticPatch);
+    try {
+      const result = await persist();
+      if (result.files) setFilesData(result.files);
+      return true;
+    } catch (error) {
+      console.error('Failed to save schedule item.', error);
+      setFilesData(error.files || previousFiles);
+      setSaveError(t(lang, 'taskSaveError'));
+      // Recover server state if the write succeeded but the follow-up read failed.
+      try {
+        await silentRefresh?.();
+      } catch (refreshError) {
+        console.error('Failed to refresh schedules.', refreshError);
+      }
+      return false;
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleTask = (row, checked) => {
+    const status = checked ? 'active' : 'completed';
+    return saveTaskChange(row.id, { status }, () => updateSchedule(row.id, { status }));
+  };
+
+  const handleMoveTask = async (item, targetDateStr) => {
+    if (!item?.id || !targetDateStr || targetDateStr < todayStr || item.dateStr === targetDateStr) return;
+    const targetCount = getFilesForDate(targetDateStr)
+      .reduce((count, file) => count + (file.scheduleRows?.length || 0), 0);
+    const saved = await saveTaskChange(
+      item.id,
+      { start_at: dateStrToStartAt(targetDateStr, targetCount) },
+      () => updateSchedule({ id: item.id, targetDate: targetDateStr }),
+    );
+    if (saved) {
+      try {
+        await recordScheduleActivity(
+          'task_moved',
+          `${item.dateStr} → ${targetDateStr} · ${t(lang, 'taskMovedActivity')}`,
+          { source_date: item.dateStr, target_date: targetDateStr, task_text: item.text },
+        );
+      } catch (error) {
+        console.error('Failed to record schedule move.', error);
+      }
+    }
+  };
+
+  // Only the handle starts a drag, so clicking task controls or selecting text is safe.
+  const handleDragStart = (e, item) => {
+    if (!item.id || item.dateStr < todayStr || savingRef.current) {
       e.preventDefault();
       return;
     }
-    setDragItem({ dateStr, fileIndex, lineIndex, text, checked });
+    setDragItem(item);
     e.dataTransfer.effectAllowed = 'move';
-    setTimeout(() => e.target.classList.add('dragging'), 0);
+    e.dataTransfer.setData('text/plain', item.text);
+    const taskElement = e.currentTarget.closest('.weekly-task-item');
+    if (taskElement) e.dataTransfer.setDragImage(taskElement, 12, 12);
   };
 
-  const handleDragEnd = (e) => {
-    e.target.classList.remove('dragging');
+  const handleDragEnd = () => {
     setDragItem(null);
     setDragOverDay(null);
   };
 
   const handleDragOverDay = (e, dateStr) => {
-    if (dateStr < todayStr) return;
+    if (!dragItem || savingRef.current || dateStr < todayStr || dragItem.dateStr === dateStr) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverDay(dateStr);
   };
 
-  const handleDropOnDay = async (e, targetDateStr) => {
+  const handleDropOnDay = (e, targetDateStr) => {
     e.preventDefault();
-    setDragOverDay(null);
-
-    if (!dragItem || targetDateStr < todayStr) return;
-    if (dragItem.dateStr === targetDateStr) {
-      setDragItem(null);
-      return;
-    }
-
-    const srcFiles = getFilesForDate(dragItem.dateStr);
-    const srcFile = srcFiles[dragItem.fileIndex];
-    if (!srcFile) { setDragItem(null); return; }
-
-    const newTaskLine = `- [${dragItem.checked ? 'x' : ' '}] ${dragItem.text}`;
-
-    const srcLines = srcFile.content.split('\n');
-    srcLines.splice(dragItem.lineIndex, 1);
-    const newSrcContent = srcLines.join('\n');
-
-    const tgtFiles = getFilesForDate(targetDateStr);
-    const tgtFile = tgtFiles.length > 0 ? tgtFiles[0] : null;
-    const newTgtContent = tgtFile
-      ? (tgtFile.content ? `${tgtFile.content.trimEnd()}\n${newTaskLine}` : newTaskLine)
-      : newTaskLine;
-
-    const toKey = (d) => getDateBucket(d, dateContext);
-    const srcKey = toKey(dragItem.dateStr);
-    const tgtKey = toKey(targetDateStr);
-    const srcDateStr = dragItem.dateStr;
-
-    // Optimistic update — update local state immediately, no loading flash
-    setFilesData(prev => {
-      const next = { ...prev };
-      const prevByDate = prev.byDate || prev.yesterday || {};
-      const setByDateFiles = (dateStr, updatedFiles) => {
-        next.byDate = { ...(next.byDate || prevByDate), [dateStr]: updatedFiles };
-        next.yesterday = next.byDate;
-      };
-
-      const updatedSrcFiles = srcFiles.map((f, i) =>
-        i === dragItem.fileIndex ? { ...f, content: newSrcContent } : f
-      );
-      if (srcKey === 'byDate') {
-        setByDateFiles(srcDateStr, updatedSrcFiles);
-      } else {
-        next[srcKey] = updatedSrcFiles;
-      }
-
-      if (tgtFile) {
-        const updatedTgtFiles = tgtFiles.map((f, i) =>
-          i === 0 ? { ...f, content: newTgtContent } : f
-        );
-        if (tgtKey === 'byDate') {
-          setByDateFiles(targetDateStr, updatedTgtFiles);
-        } else {
-          next[tgtKey] = updatedTgtFiles;
-        }
-      } else {
-        const optimisticFile = { path: `__optimistic__${targetDateStr}`, filename: `${targetDateStr}.md`, content: newTaskLine };
-        if (tgtKey === 'byDate') {
-          setByDateFiles(targetDateStr, [optimisticFile]);
-        } else {
-          next[tgtKey] = [optimisticFile];
-        }
-      }
-
-      return next;
-    });
-
-    setDragItem(null);
-
-    // Persist to server
-    try {
-      if (tgtFile) {
-        await updateSchedule({ filepath: tgtFile.path, content: newTgtContent });
-      } else {
-        await createSchedule({ taskLine: newTaskLine, targetDate: targetDateStr });
-      }
-      await updateSchedule({ filepath: srcFile.path, content: newSrcContent });
-      await recordScheduleActivity(
-        'task_moved',
-        `${dragItem.dateStr} → ${targetDateStr} · ${t(lang, 'taskMovedActivity')}`,
-        { source_date: dragItem.dateStr, target_date: targetDateStr, task_text: dragItem.text },
-      );
-    } catch (error) {
-      console.error('Failed to move schedule item.', error);
-    } finally {
-      await silentRefresh?.();
-    }
+    handleDragEnd();
+    return handleMoveTask(dragItem, targetDateStr);
   };
 
   const toggleFreqTask = (idx) => {
@@ -348,7 +336,10 @@ export default function WeeklyPlanner({
 
   const handleApplyFreqTasks = async () => {
     const selected = frequentTasks.filter((_, i) => selectedFreqIds.has(i));
-    if (selected.length === 0 || selectedDays.size === 0) return;
+    if (selected.length === 0 || selectedDays.size === 0 || savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    setSaveError('');
     try {
       for (const dateStr of selectedDays) {
         await createSchedule({ frequentTasks: selected, targetDate: dateStr });
@@ -357,6 +348,10 @@ export default function WeeklyPlanner({
       closeFreqModal();
     } catch (err) {
       console.error("Failed to add frequent tasks", err);
+      setSaveError(t(lang, 'taskSaveError'));
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -402,13 +397,18 @@ export default function WeeklyPlanner({
         </div>
       </div>
 
+      <div className={`weekly-save-status ${saveError ? 'error' : ''}`} role="status" aria-live="polite">
+        {isSaving ? t(lang, 'taskSaving') : saveError}
+      </div>
       <div className="weekly-planner-container">
         {weekDays.map(day => (
           <div
             key={day.dateStr}
             className={`weekly-day-col glass-card ${day.isToday ? 'today-col' : ''} ${day.isPast ? 'past-col' : ''} ${dragOverDay === day.dateStr ? 'drag-over-day' : ''}`}
             onDragOver={(e) => handleDragOverDay(e, day.dateStr)}
-            onDragLeave={() => setDragOverDay(null)}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) setDragOverDay(null);
+            }}
             onDrop={(e) => handleDropOnDay(e, day.dateStr)}
           >
             <button
@@ -439,20 +439,56 @@ export default function WeeklyPlanner({
               {day.tasksByFile.every(tf => tf.items.length === 0) ? (
                 <div className="w-empty">{t(lang, 'noTasksForDay')}</div>
               ) : (
-                day.tasksByFile.map(({ fileIndex, items }) =>
-                  items.map((task, idx) => (
+                day.tasksByFile.map(({ file, fileIndex, items }) =>
+                  items.map((task, idx) => {
+                    const row = file.scheduleRows?.[idx];
+                    const item = { id: row?.id, dateStr: day.dateStr, text: task.text };
+                    const disabled = day.isPast || isSaving || !row?.id;
+                    return (
                     <div
-                      key={`${fileIndex}-${idx}`}
-                      className={`weekly-task-item ${task.checked ? 'checked' : ''}`}
-                      draggable={!day.isPast}
-                      onDragStart={(e) => handleDragStart(e, day.dateStr, fileIndex, task.lineIndex, task.text, task.checked)}
-                      onDragEnd={handleDragEnd}
+                      key={row?.id || `${fileIndex}-${idx}`}
+                      className={`weekly-task-item ${task.checked ? 'checked' : ''} ${dragItem?.id === row?.id && dragItem ? 'dragging' : ''}`}
                     >
-                      {!day.isPast && <GripVertical size={13} className="weekly-grip" />}
-                      <span className="weekly-task-dot" aria-hidden="true" />
+                      {!day.isPast && (
+                        <span
+                          className={`weekly-drag-handle ${disabled ? 'disabled' : ''}`}
+                          draggable={!disabled}
+                          onDragStart={(e) => handleDragStart(e, item)}
+                          onDragEnd={handleDragEnd}
+                          title={t(lang, 'dragTask')}
+                          aria-hidden="true"
+                        >
+                          <GripVertical size={13} className="weekly-grip" />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="weekly-task-check"
+                        role="checkbox"
+                        aria-checked={task.checked}
+                        aria-label={`${t(lang, task.checked ? 'markTaskIncomplete' : 'markTaskComplete')}: ${task.text}`}
+                        disabled={disabled}
+                        onClick={() => handleToggleTask(row, task.checked)}
+                      >
+                        {task.checked ? <CheckCircle2 size={17} /> : <Circle size={17} />}
+                      </button>
                       <span className="task-text">{task.text}</span>
+                      {!day.isPast && (
+                        <label className={`weekly-move-task ${disabled ? 'disabled' : ''}`} title={t(lang, 'rescheduleTask')}>
+                          <CalendarDays size={14} aria-hidden="true" />
+                          <input
+                            type="date"
+                            value={day.dateStr}
+                            min={todayStr}
+                            aria-label={`${t(lang, 'rescheduleTask')}: ${task.text}`}
+                            disabled={disabled}
+                            onChange={(e) => handleMoveTask(item, e.target.value)}
+                          />
+                        </label>
+                      )}
                     </div>
-                  ))
+                    );
+                  })
                 )
               )}
             </div>
@@ -544,9 +580,9 @@ export default function WeeklyPlanner({
               <button
                 className="freq-apply-btn"
                 onClick={handleApplyFreqTasks}
-                disabled={selectedFreqIds.size === 0 || selectedDays.size === 0}
+                disabled={isSaving || selectedFreqIds.size === 0 || selectedDays.size === 0}
               >
-                {t(lang, 'freqAddToWeek')}
+                {t(lang, isSaving ? 'taskSaving' : 'freqAddToWeek')}
                 {selectedFreqIds.size > 0 && selectedDays.size > 0 ? ` (${selectedFreqIds.size} × ${selectedDays.size})` : ''}
               </button>
             </div>

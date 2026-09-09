@@ -48,8 +48,7 @@ export function dateStrToStartAt(dateStr, orderIndex = 0) {
     throw new Error('일정 날짜가 필요합니다.');
   }
 
-  // 기존 앱은 날짜 단위 markdown 파일만 갖고 있으므로, 날짜만 있는 일정은
-  // 로컬 00:00부터 행 순서대로 1분씩 더해 같은 날짜 안의 정렬 순서를 보존한다.
+  // 날짜 단위 일정의 화면 순서는 DB의 start_at에 로컬 00:00부터 1분 간격으로 담는다.
   const date = new Date(`${dateStr}T00:00:00`);
   if (Number.isNaN(date.getTime())) {
     throw new Error(`유효하지 않은 일정 날짜입니다: ${dateStr}`);
@@ -175,6 +174,7 @@ function compareRows(left, right) {
 }
 
 export function mapRowsToPlannerFiles(rows = [], context = getAppDateContext()) {
+  // 기존 플래너의 checklist 렌더링용 메모리 구조이며 실제 파일을 저장하지 않는다.
   const filesData = {
     tomorrow: [],
     today: [],
@@ -200,7 +200,7 @@ export function mapRowsToPlannerFiles(rows = [], context = getAppDateContext()) 
       const sortedRows = [...dateRows].sort(compareRows);
       const content = sortedRows.map(rowToChecklistLine).join('\n');
       const file = {
-        filename: `schedule_${dateStr}.md`,
+        filename: dateStr,
         path: buildPlannerFilePath(dateStr),
         added_date: formatLocalDateTime(sortedRows[0]?.created_at || sortedRows[0]?.start_at),
         content: content ? `${content}\n` : '',
