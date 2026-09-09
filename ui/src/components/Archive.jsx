@@ -1,26 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, CalendarCheck, CheckCircle2, ChevronDown, ChevronUp, Circle, PenLine, Save, X } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ChevronDown, ChevronUp, Circle, PenLine, Save, X } from 'lucide-react';
 import {
   DAILY_REFLECTION_MAX_LENGTH,
   getDailyReflections,
   saveDailyReflection,
 } from '../services/dailyReflectionService';
-import { getScheduleActivityLog, getSchedules } from '../services/scheduleService';
+import { getSchedules } from '../services/scheduleService';
 import { t } from '../utils/i18n';
-import { localDateFromStr, localDateStr } from '../utils/date';
+import { localDateFromStr } from '../utils/date';
 import { buildDateSummaries, getAppDateContext, getByDateFiles } from '../utils/plannerData';
 import './Archive.css';
 
 export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
   const { todayStr: appTodayStr, tomorrowStr: appTomorrowStr } = getAppDateContext();
-  const [activeTab, setActiveTab] = useState('yesterday');
   const [filesData, setFilesData] = useState({ byDate: {}, yesterday: {} });
-  const [activityLog, setActivityLog] = useState([]);
   const [dailyReflections, setDailyReflections] = useState({});
   const [selectedReflectionDate, setSelectedReflectionDate] = useState(appTodayStr);
   const [reflectionDrafts, setReflectionDrafts] = useState({});
   const [reflectionEditingDates, setReflectionEditingDates] = useState({});
-  const [reflectionHistoryDate, setReflectionHistoryDate] = useState('');
   const [reflectionSaveState, setReflectionSaveState] = useState('idle');
   const [reflectionLoadError, setReflectionLoadError] = useState(false);
   const [archiveLoadError, setArchiveLoadError] = useState(false);
@@ -63,9 +60,8 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
     setLoading(true);
     try {
       const reflectionDataVersion = reflectionDataVersionRef.current;
-      const [filesResult, logResult, reflectionResult] = await Promise.allSettled([
+      const [filesResult, reflectionResult] = await Promise.allSettled([
         getSchedules(),
-        getScheduleActivityLog(),
         getDailyReflections(),
       ]);
       if (filesResult.status === 'fulfilled') {
@@ -73,12 +69,7 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
       } else {
         console.error('Failed to load archived schedules.', filesResult.reason);
       }
-      if (logResult.status === 'fulfilled') {
-        setActivityLog(logResult.value || []);
-      } else {
-        console.error('Failed to load schedule activity.', logResult.reason);
-      }
-      setArchiveLoadError(filesResult.status === 'rejected' || logResult.status === 'rejected');
+      setArchiveLoadError(filesResult.status === 'rejected');
       if (reflectionDataVersion === reflectionDataVersionRef.current) {
         if (reflectionResult.status === 'rejected') {
           console.error('Failed to load daily reflections.', reflectionResult.reason);
@@ -125,26 +116,20 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
     setSelectedFile(null);
   };
 
-  const byDateFiles = getByDateFiles(filesData);
-  const dateSummaries = useMemo(() => buildDateSummaries(filesData, {
-    todayDate: localDateFromStr(appTodayStr),
-    todayStr: appTodayStr,
-    tomorrowStr: appTomorrowStr,
-  }), [appTodayStr, appTomorrowStr, filesData]);
-  const pastSummaries = dateSummaries.filter((summary) => summary.dateStr < appTodayStr);
-  const scheduledSummaries = dateSummaries.filter((summary) => summary.dateStr >= appTodayStr);
-  const reviewStartDate = localDateFromStr(appTodayStr);
-  reviewStartDate.setDate(reviewStartDate.getDate() - 7);
-  const recentReviewSummaries = pastSummaries.filter((summary) => summary.dateStr >= localDateStr(reviewStartDate));
-  const reviewStats = recentReviewSummaries.reduce((stats, summary) => ({
-    days: stats.days + 1,
-    total: stats.total + summary.total,
-    checked: stats.checked + summary.checked,
-    remaining: stats.remaining + summary.remaining,
-  }), { days: 0, total: 0, checked: 0, remaining: 0 });
-  const reviewCompletionRate = reviewStats.total > 0
-    ? Math.round((reviewStats.checked / reviewStats.total) * 100)
-    : 0;
+  const dateSummaries = useMemo(() => {
+    const byDate = Object.fromEntries(Object.entries(getByDateFiles(filesData))
+      .filter(([, files]) => files?.length > 0));
+    if (filesData.today?.length) byDate[appTodayStr] = filesData.today;
+    if (filesData.tomorrow?.length) byDate[appTomorrowStr] = filesData.tomorrow;
+    Object.keys(dailyReflections).forEach((date) => {
+      if (!byDate[date]) byDate[date] = [];
+    });
+    return buildDateSummaries({ byDate }, {
+      todayDate: localDateFromStr(appTodayStr),
+      todayStr: appTodayStr,
+      tomorrowStr: appTomorrowStr,
+    });
+  }, [appTodayStr, appTomorrowStr, dailyReflections, filesData]);
   const savedReflection = dailyReflections[selectedReflectionDate] || '';
   const reflectionDraft = reflectionDrafts[selectedReflectionDate] ?? '';
   const reflectionIsEditing = Boolean(reflectionEditingDates[selectedReflectionDate]);
@@ -152,10 +137,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
   const reflectionIsDirty = reflectionIsEditing
     ? reflectionDraft !== savedReflection
     : Boolean(reflectionDraft.trim());
-  const reflectionHistory = Object.entries(dailyReflections)
-    .filter(([date]) => !reflectionHistoryDate || date === reflectionHistoryDate)
-    .sort(([firstDate], [secondDate]) => secondDate.localeCompare(firstDate));
-
   const editReflection = (date) => {
     if (reflectionSavingRef.current) return;
     setSelectedReflectionDate(date);
@@ -164,6 +145,14 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
       [date]: currentDrafts[date] ?? dailyReflections[date],
     }));
     setReflectionEditingDates((currentDates) => ({ ...currentDates, [date]: true }));
+    setReflectionSaveState('idle');
+    reflectionEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    reflectionEditorRef.current?.focus();
+  };
+
+  const startReflection = (date) => {
+    if (reflectionSavingRef.current || date > appTodayStr) return;
+    setSelectedReflectionDate(date);
     setReflectionSaveState('idle');
     reflectionEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     reflectionEditorRef.current?.focus();
@@ -205,7 +194,7 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
         return nextReflections;
       });
       clearReflectionDraft(reflectionDate);
-      setReflectionHistoryDate('');
+      setExpandedDates((currentDates) => ({ ...currentDates, [reflectionDate]: true }));
       reflectionDataVersionRef.current += 1;
       setReflectionSaveState(reflectionContent.trim() ? 'saved' : 'deleted');
     } catch (error) {
@@ -214,6 +203,7 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
       if (error.code === '23505') {
         try {
           setDailyReflections(await getDailyReflections());
+          setExpandedDates((currentDates) => ({ ...currentDates, [reflectionDate]: true }));
           setReflectionLoadError(false);
         } catch {
           setReflectionLoadError(true);
@@ -331,37 +321,48 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
     );
   };
 
-  const renderActivityLog = () => {
-    if (activityLog.length === 0) {
-      return <div className="empty-state-mini">{t(lang, 'noActivityLog')}</div>;
-    }
-
+  const renderDateReflection = (date) => {
+    const content = dailyReflections[date];
+    const canWrite = date <= appTodayStr;
     return (
-      <div className="activity-log-list">
-        {activityLog.map((entry, idx) => (
-          <div className="activity-log-row" key={`${entry.timestamp}-${entry.action}-${idx}`}>
-            <div className="activity-log-icon">
-              <Activity size={15} />
-            </div>
-            <div className="activity-log-copy">
-              <strong>{entry.message}</strong>
-              <span>{formatDate(entry.timestamp)} · {entry.action}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+      <section className="daily-reflection-entry" aria-labelledby={`reflection-title-${date}`}>
+        <div className="daily-reflection-entry-header">
+          <h4 id={`reflection-title-${date}`}>{t(lang, 'dailyReflectionTitle')}</h4>
+          {canWrite && (
+            <button
+              type="button"
+              className="daily-reflection-secondary-btn"
+              disabled={reflectionSaveState === 'saving' || reflectionLoadError}
+              aria-label={`${date} ${t(lang, content ? 'dailyReflectionEdit' : 'dailyReflectionWrite')}`}
+              onClick={() => content ? editReflection(date) : startReflection(date)}
+            >
+              <PenLine size={14} aria-hidden="true" />
+              {t(lang, content ? 'dailyReflectionEdit' : 'dailyReflectionWrite')}
+            </button>
+          )}
+        </div>
+        {content ? (
+          <p className="daily-reflection-content">{content}</p>
+        ) : (
+          <p className="daily-reflection-empty">
+            {t(lang, reflectionLoadError ? 'dailyReflectionLoadError' : canWrite ? 'dailyReflectionMissing' : 'dailyReflectionUpcoming')}
+          </p>
+        )}
+      </section>
     );
   };
 
   const renderSummaryAccordion = (summaries) => (
     <div className="accordion-list">
       {summaries.map(summary => (
-        <div className="accordion-item" key={summary.dateStr}>
+        <div className="accordion-item" key={summary.dateStr} data-date={summary.dateStr}>
           <button
             type="button"
             className="accordion-header"
             onClick={() => toggleAccordion(summary.dateStr)}
+            id={`archive-date-${summary.dateStr}`}
             aria-expanded={Boolean(expandedDates[summary.dateStr])}
+            aria-controls={`archive-details-${summary.dateStr}`}
           >
             <div className="archive-accordion-title">
               <span className="accordion-title">{summary.dateStr}</span>
@@ -372,7 +373,9 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
             {expandedDates[summary.dateStr] ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
           {expandedDates[summary.dateStr] && (
-            <div className="accordion-body">
+            <div className="accordion-body" id={`archive-details-${summary.dateStr}`} role="region" aria-labelledby={`archive-date-${summary.dateStr}`}>
+              {renderDateReflection(summary.dateStr)}
+              <h4 className="archive-section-title">{t(lang, 'archiveScheduleRecords')}</h4>
               {renderDateSummary(summary)}
             </div>
           )}
@@ -383,45 +386,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
 
   return (
     <div className="archive-container fade-in">
-      <section className="review-overview glass-card">
-        <div className="review-heading">
-          <span>{t(lang, 'reviewPeriod')}</span>
-          <h2>{t(lang, 'reviewTitle')}</h2>
-          <p>{t(lang, 'reviewDesc')}</p>
-        </div>
-        <div className="review-summary-grid" aria-label={t(lang, 'reviewTitle')}>
-          <div className="review-summary-card">
-            <span>{t(lang, 'reviewDays')}</span>
-            <strong>{reviewStats.days}</strong>
-          </div>
-          <div className="review-summary-card highlight">
-            <span>{t(lang, 'reviewCompletionRate')}</span>
-            <strong>{reviewCompletionRate}%</strong>
-          </div>
-          <div className="review-summary-card">
-            <span>{t(lang, 'archiveCompleted')}</span>
-            <strong>{reviewStats.checked}</strong>
-          </div>
-          <div className="review-summary-card">
-            <span>{t(lang, 'archiveUnfinished')}</span>
-            <strong>{reviewStats.remaining}</strong>
-          </div>
-        </div>
-      </section>
-
-      <div className="archive-tabs-nav">
-        <button 
-          type="button"
-          className={`archive-tab-btn ${activeTab === 'yesterday' ? 'active' : ''}`}
-          onClick={() => setActiveTab('yesterday')}
-        >{t(lang, 'dailyReview')}</button>
-        <button
-          type="button"
-          className={`archive-tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
-          onClick={() => setActiveTab('activity')}
-        >{t(lang, 'operationLog')}</button>
-      </div>
-
       <div className="glass-card files-list-card">
         {loading ? (
           <div className="skeleton-loader">{t(lang, 'loadingTasks')}</div>
@@ -435,194 +399,120 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
                 </button>
               </div>
             )}
-            {activeTab === 'yesterday' && (
-              <div className="tab-pane fade-in">
-                <form className="daily-reflection-editor" onSubmit={saveReflection}>
-                  <div className="daily-reflection-header">
-                    <div className="daily-reflection-heading">
-                      <PenLine size={18} aria-hidden="true" />
-                      <div>
-                        <h3 id="daily-reflection-title">{t(lang, 'dailyReflectionTitle')}</h3>
-                        <p>{t(lang, 'dailyReflectionDesc')}</p>
-                      </div>
+            <div className="tab-pane fade-in">
+              <form className="daily-reflection-editor" onSubmit={saveReflection}>
+                <div className="daily-reflection-header">
+                  <div className="daily-reflection-heading">
+                    <PenLine size={18} aria-hidden="true" />
+                    <div>
+                      <h3 id="daily-reflection-title">{t(lang, 'dailyReflectionTitle')}</h3>
+                      <p>{t(lang, 'dailyReflectionDesc')}</p>
                     </div>
-                    <label className="daily-reflection-date">
-                      <span>{t(lang, 'dailyReflectionDate')}</span>
-                      <input
-                        type="date"
-                        value={selectedReflectionDate}
-                        max={appTodayStr}
-                        required
-                        disabled={reflectionSaveState === 'saving'}
-                        onChange={(event) => {
-                          setSelectedReflectionDate(event.target.value);
-                          setReflectionSaveState('idle');
-                        }}
-                      />
-                    </label>
                   </div>
-                  {reflectionNeedsEdit && (
-                    <div className="daily-reflection-notice">
-                      <span>{t(lang, 'dailyReflectionExists')}</span>
-                      <button
-                        type="button"
-                        className="daily-reflection-secondary-btn"
-                        disabled={reflectionSaveState === 'saving'}
-                        onClick={() => editReflection(selectedReflectionDate)}
-                      >
-                        <PenLine size={14} aria-hidden="true" />
-                        {t(lang, 'dailyReflectionEdit')}
-                      </button>
-                    </div>
-                  )}
-                  {reflectionIsEditing && (
-                    <p className="daily-reflection-editing" id="daily-reflection-editing">
-                      {selectedReflectionDate} · {t(lang, 'dailyReflectionEditing')}
-                    </p>
-                  )}
-                  <textarea
-                    ref={reflectionEditorRef}
-                    className="daily-reflection-textarea"
-                    value={reflectionDraft}
-                    maxLength={DAILY_REFLECTION_MAX_LENGTH}
-                    disabled={reflectionSaveState === 'saving'}
-                    readOnly={reflectionNeedsEdit || reflectionLoadError}
-                    placeholder={t(lang, reflectionNeedsEdit ? 'dailyReflectionExists' : 'dailyReflectionPlaceholder')}
-                    aria-labelledby="daily-reflection-title"
-                    aria-describedby={reflectionIsEditing ? 'daily-reflection-editing' : undefined}
-                    onChange={(event) => {
-                      setReflectionDrafts((currentDrafts) => ({
-                        ...currentDrafts,
-                        [selectedReflectionDate]: event.target.value,
-                      }));
-                      setReflectionSaveState('idle');
-                    }}
-                  />
-                  <div className="daily-reflection-actions">
-                    <span
-                      className={`daily-reflection-status ${reflectionSaveState === 'error' || reflectionSaveState === 'conflict' || reflectionLoadError ? 'error' : ''}`}
-                      role="status"
-                      aria-live="polite"
-                    >
-                      {reflectionStatus}
-                    </span>
-                    {reflectionIsEditing && (
-                      <button
-                        type="button"
-                        className="daily-reflection-secondary-btn"
-                        disabled={reflectionSaveState === 'saving'}
-                        onClick={() => {
-                          clearReflectionDraft(selectedReflectionDate);
-                          setReflectionSaveState('idle');
-                        }}
-                      >
-                        {t(lang, 'dailyReflectionCancel')}
-                      </button>
-                    )}
+                  <label className="daily-reflection-date">
+                    <span>{t(lang, 'dailyReflectionDate')}</span>
+                    <input
+                      type="date"
+                      value={selectedReflectionDate}
+                      max={appTodayStr}
+                      required
+                      disabled={reflectionSaveState === 'saving'}
+                      onChange={(event) => {
+                        setSelectedReflectionDate(event.target.value);
+                        setReflectionSaveState('idle');
+                      }}
+                    />
+                  </label>
+                </div>
+                {reflectionNeedsEdit && (
+                  <div className="daily-reflection-notice">
+                    <span>{t(lang, 'dailyReflectionExists')}</span>
                     <button
-                      type="submit"
-                      className="daily-reflection-save-btn"
-                      disabled={!reflectionIsDirty || reflectionNeedsEdit || reflectionLoadError || reflectionSaveState === 'saving'}
+                      type="button"
+                      className="daily-reflection-secondary-btn"
+                      disabled={reflectionSaveState === 'saving'}
+                      onClick={() => editReflection(selectedReflectionDate)}
                     >
-                      <Save size={15} aria-hidden="true" />
-                      {reflectionSaveState === 'saving'
-                        ? t(lang, 'dailyReflectionSaving')
-                        : reflectionIsEditing && !reflectionDraft.trim()
-                          ? t(lang, 'dailyReflectionDelete')
-                          : t(lang, reflectionIsEditing ? 'dailyReflectionUpdate' : 'dailyReflectionSave')}
+                      <PenLine size={14} aria-hidden="true" />
+                      {t(lang, 'dailyReflectionEdit')}
                     </button>
                   </div>
-                </form>
-
-                <section className="daily-reflection-history" aria-labelledby="daily-reflection-history-title">
-                  <div className="daily-reflection-history-header">
-                    <div>
-                      <h3 className="pane-title" id="daily-reflection-history-title">{t(lang, 'dailyReflectionHistory')}</h3>
-                      <p className="pane-desc">{t(lang, 'dailyReflectionHistoryDesc')}</p>
-                    </div>
-                    <div className="daily-reflection-history-filter">
-                      <label className="daily-reflection-date">
-                        <span>{t(lang, 'dailyReflectionHistoryDate')}</span>
-                        <input
-                          type="date"
-                          value={reflectionHistoryDate}
-                          max={appTodayStr}
-                          onChange={(event) => setReflectionHistoryDate(event.target.value)}
-                        />
-                      </label>
-                      {reflectionHistoryDate && (
-                        <button type="button" className="daily-reflection-secondary-btn" onClick={() => setReflectionHistoryDate('')}>
-                          {t(lang, 'dailyReflectionShowAll')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {reflectionLoadError && (
-                    <div className="daily-reflection-notice" role="alert">
-                      <span>{t(lang, 'dailyReflectionLoadError')}</span>
-                      <button type="button" className="daily-reflection-secondary-btn" onClick={loadFiles}>
-                        {t(lang, 'dailyReflectionRetry')}
-                      </button>
-                    </div>
+                )}
+                {reflectionIsEditing && (
+                  <p className="daily-reflection-editing" id="daily-reflection-editing">
+                    {selectedReflectionDate} · {t(lang, 'dailyReflectionEditing')}
+                  </p>
+                )}
+                <textarea
+                  ref={reflectionEditorRef}
+                  className="daily-reflection-textarea"
+                  value={reflectionDraft}
+                  maxLength={DAILY_REFLECTION_MAX_LENGTH}
+                  disabled={reflectionSaveState === 'saving'}
+                  readOnly={reflectionNeedsEdit || reflectionLoadError}
+                  placeholder={t(lang, reflectionNeedsEdit ? 'dailyReflectionExists' : 'dailyReflectionPlaceholder')}
+                  aria-labelledby="daily-reflection-title"
+                  aria-describedby={reflectionIsEditing ? 'daily-reflection-editing' : undefined}
+                  onChange={(event) => {
+                    setReflectionDrafts((currentDrafts) => ({
+                      ...currentDrafts,
+                      [selectedReflectionDate]: event.target.value,
+                    }));
+                    setReflectionSaveState('idle');
+                  }}
+                />
+                <div className="daily-reflection-actions">
+                  <span
+                    className={`daily-reflection-status ${reflectionSaveState === 'error' || reflectionSaveState === 'conflict' || reflectionLoadError ? 'error' : ''}`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {reflectionStatus}
+                  </span>
+                  {reflectionIsEditing && (
+                    <button
+                      type="button"
+                      className="daily-reflection-secondary-btn"
+                      disabled={reflectionSaveState === 'saving'}
+                      onClick={() => {
+                        clearReflectionDraft(selectedReflectionDate);
+                        setReflectionSaveState('idle');
+                      }}
+                    >
+                      {t(lang, 'dailyReflectionCancel')}
+                    </button>
                   )}
-                  {reflectionHistory.length === 0 ? (
-                    !reflectionLoadError && <div className="empty-state-mini">{t(lang, 'dailyReflectionHistoryEmpty')}</div>
-                  ) : (
-                    <div className="daily-reflection-list">
-                      {reflectionHistory.map(([date, content]) => (
-                        <article className="daily-reflection-entry" key={date}>
-                          <div className="daily-reflection-entry-header">
-                            <time dateTime={date}>{date}</time>
-                            <button
-                              type="button"
-                              className="daily-reflection-secondary-btn"
-                              disabled={reflectionSaveState === 'saving' || reflectionLoadError}
-                              aria-label={`${date} ${t(lang, 'dailyReflectionEdit')}`}
-                              onClick={() => editReflection(date)}
-                            >
-                              <PenLine size={14} aria-hidden="true" />
-                              {t(lang, 'dailyReflectionEdit')}
-                            </button>
-                          </div>
-                          <p className="daily-reflection-content">{content}</p>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                  <button
+                    type="submit"
+                    className="daily-reflection-save-btn"
+                    disabled={!reflectionIsDirty || reflectionNeedsEdit || reflectionLoadError || reflectionSaveState === 'saving'}
+                  >
+                    <Save size={15} aria-hidden="true" />
+                    {reflectionSaveState === 'saving'
+                      ? t(lang, 'dailyReflectionSaving')
+                      : reflectionIsEditing && !reflectionDraft.trim()
+                        ? t(lang, 'dailyReflectionDelete')
+                        : t(lang, reflectionIsEditing ? 'dailyReflectionUpdate' : 'dailyReflectionSave')}
+                  </button>
+                </div>
+              </form>
 
-                <h3 className="pane-title">{t(lang, 'taskHistory')}</h3>
+              <section className="archive-date-history" aria-labelledby="archive-date-history-title">
+                <h3 className="pane-title" id="archive-date-history-title">{t(lang, 'taskHistory')}</h3>
                 <p className="pane-desc">{t(lang, 'taskHistoryDesc')}</p>
-                
-                {Object.keys(byDateFiles).length === 0 ? (
-                  <div className="empty-state-mini">{t(lang, 'noHistory')}</div>
-                ) : (
-                  <div className="archive-summary-groups">
-                    {pastSummaries.length > 0 && (
-                      <section>
-                        <h4 className="archive-section-title">{t(lang, 'pastTasks')}</h4>
-                        {renderSummaryAccordion(pastSummaries)}
-                      </section>
-                    )}
-                    {scheduledSummaries.length > 0 && (
-                      <section>
-                        <h4 className="archive-section-title">{t(lang, 'upcomingPlans')}</h4>
-                        {renderSummaryAccordion(scheduledSummaries)}
-                      </section>
-                    )}
+                {reflectionLoadError && (
+                  <div className="daily-reflection-notice" role="alert">
+                    <span>{t(lang, 'dailyReflectionLoadError')}</span>
+                    <button type="button" className="daily-reflection-secondary-btn" onClick={loadFiles}>
+                      {t(lang, 'dailyReflectionRetry')}
+                    </button>
                   </div>
                 )}
-              </div>
-            )}
-
-            {activeTab === 'activity' && (
-              <div className="tab-pane fade-in">
-                <h3 className="pane-title">{t(lang, 'operationLog')}</h3>
-                <p className="pane-desc">{t(lang, 'operationLogDesc')}</p>
-                {renderActivityLog()}
-              </div>
-            )}
-            
+                {dateSummaries.length === 0 ? (
+                  !archiveLoadError && !reflectionLoadError && <div className="empty-state-mini">{t(lang, 'noHistory')}</div>
+                ) : renderSummaryAccordion(dateSummaries)}
+              </section>
+            </div>
           </div>
         )}
       </div>

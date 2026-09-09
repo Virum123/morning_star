@@ -317,6 +317,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+.daily-reflection-entry-header h4 {
+  margin: 0;
+  color: var(--accent-color);
+  font-size: 0.8rem;
+}
+
+.accordion-body > .daily-reflection-entry {
+  margin-bottom: 16px;
+}
+
+.daily-reflection-empty {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.archive-date-history > .daily-reflection-notice {
+  margin-bottom: 12px;
+}
+
+.accordion-header:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
 .daily-reflection-content {
   margin: 8px 0 0;
   color: var(--text-primary);
