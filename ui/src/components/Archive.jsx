@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarCheck, CheckCircle2, ChevronDown, ChevronUp, Circle, PenLine, Save, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Circle, PenLine, Save } from 'lucide-react';
 import {
   DAILY_REFLECTION_MAX_LENGTH,
   getDailyReflections,
@@ -23,26 +23,10 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
   const [archiveLoadError, setArchiveLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedDates, setExpandedDates] = useState({});
-  const [selectedFile, setSelectedFile] = useState(null);
-  const previewCloseRef = useRef(null);
   const previousAppDateRef = useRef(appTodayStr);
   const reflectionDataVersionRef = useRef(0);
   const reflectionSavingRef = useRef(false);
   const reflectionEditorRef = useRef(null);
-
-  useEffect(() => {
-    if (!selectedFile) return undefined;
-    const previousFocus = document.activeElement;
-    previewCloseRef.current?.focus();
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setSelectedFile(null);
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      previousFocus?.focus?.();
-    };
-  }, [selectedFile]);
 
   useEffect(() => {
     const previousAppDate = previousAppDateRef.current;
@@ -93,27 +77,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
       ...prev,
       [dateKey]: !prev[dateKey]
     }));
-  };
-
-  const formatDate = (dateString, isFullTime = true) => {
-    const normalized = typeof dateString === 'string' ? dateString.replace(' ', 'T') : dateString;
-    const d = new Date(normalized);
-    if (isNaN(d.getTime())) return dateString;
-    if (isFullTime) {
-      return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
-    }
-    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-  };
-
-  const openFilePreview = (file, sectionLabel) => {
-    setSelectedFile({
-      ...file,
-      sectionLabel,
-    });
-  };
-
-  const closeFilePreview = () => {
-    setSelectedFile(null);
   };
 
   const dateSummaries = useMemo(() => {
@@ -229,45 +192,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
             ? t(lang, 'dailyReflectionLoadError')
             : '';
 
-  const renderFileList = (fileArray, target, dateKey = null) => {
-    if (!fileArray || fileArray.length === 0) {
-      return (
-        <div className="empty-state-mini">
-          <p>{t(lang, 'noFiles')}</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="files-grid">
-        {fileArray.map((file, idx) => (
-          <div
-            className="file-item"
-            key={idx}
-            onClick={() => openFilePreview(file, dateKey || target)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openFilePreview(file, dateKey || target);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            title={t(lang, 'openFilePreview')}
-          >
-            <div className="file-info">
-              <div className="file-date">
-                <CalendarCheck size={14} />
-                {formatDate(file.added_date)}
-              </div>
-              <div className="file-name">{file.filename}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderTaskRows = (items, type) => (
     <ul className="archive-task-list">
       {items.map((item) => (
@@ -291,7 +215,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
           <span>{t(lang, 'archiveTotal')} {summary.total}</span>
           <span>{t(lang, 'archiveCompleted')} {summary.checked}</span>
           <span>{t(lang, 'archiveUnfinished')} {summary.remaining}</span>
-          <span>{t(lang, 'archiveFiles')} {summary.files.length}</span>
         </div>
 
         {!hasTasks ? (
@@ -312,11 +235,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
             )}
           </div>
         )}
-
-        <div className="archive-source-files">
-          <h4>{t(lang, 'archiveSourceFiles')}</h4>
-          {renderFileList(summary.files, 'byDate', summary.dateStr)}
-        </div>
       </div>
     );
   };
@@ -516,23 +434,6 @@ export default function Archive({ lang = 'ko', refreshSignal = 0 }) {
           </div>
         )}
       </div>
-
-      {selectedFile && (
-        <div className="modal-overlay files-modal-overlay fade-in" onClick={closeFilePreview}>
-          <div className="modal-content glass-card file-preview-modal" role="dialog" aria-modal="true" aria-labelledby="file-preview-title" onClick={(e) => e.stopPropagation()}>
-            <button ref={previewCloseRef} type="button" className="icon-btn close-modal-btn" onClick={closeFilePreview} aria-label={t(lang, 'closeDialog')}>
-              <X size={20} />
-            </button>
-            <h2 id="file-preview-title" className="modal-title">{selectedFile.filename}</h2>
-            <p className="file-preview-meta">
-              {selectedFile.sectionLabel} · {formatDate(selectedFile.added_date)}
-            </p>
-            <pre className="file-preview-content">
-              {selectedFile.content?.trim() || t(lang, 'emptyFile')}
-            </pre>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
